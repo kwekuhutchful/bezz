@@ -1,59 +1,119 @@
-import axios from 'axios';
-import { auth } from './firebase';
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+import axios from 'axios'
+import toast from 'react-hot-toast'
 
 // Create axios instance
-export const api = axios.create({
-  baseURL: API_BASE_URL,
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8080',
+  timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
   },
-});
+})
 
-// Add request interceptor to include auth token
+// Token management
+let authToken: string | null = localStorage.getItem('authToken')
+
+export const setAuthToken = (token: string | null) => {
+  authToken = token
+  if (token) {
+    localStorage.setItem('authToken', token)
+    api.defaults.headers.common['Authorization'] = `Bearer ${token}`
+  } else {
+    localStorage.removeItem('authToken')
+    delete api.defaults.headers.common['Authorization']
+  }
+}
+
+// Initialize token if exists
+if (authToken) {
+  setAuthToken(authToken)
+}
+
+// Request interceptor to add auth token
 api.interceptors.request.use(
-  async (config) => {
-    const user = auth.currentUser;
-    if (user) {
-      const token = await user.getIdToken();
-      config.headers.Authorization = `Bearer ${token}`;
+  (config) => {
+    if (authToken) {
+      config.headers.Authorization = `Bearer ${authToken}`
     }
-    return config;
+    return config
   },
   (error) => {
-    return Promise.reject(error);
+    return Promise.reject(error)
   }
-);
+)
 
-// Add response interceptor for error handling
+// Response interceptor for error handling
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Handle unauthorized access
-      auth.signOut();
+      // Token expired or invalid
+      setAuthToken(null)
+      toast.error('Session expired. Please log in again.')
+      window.location.href = '/login'
+    } else if (error.response?.status >= 500) {
+      toast.error('Server error. Please try again later.')
+    } else if (error.response?.data?.error) {
+      toast.error(error.response.data.error)
     }
-    return Promise.reject(error);
+    return Promise.reject(error)
   }
-);
+)
 
 // API endpoints
 export const endpoints = {
+  // Authentication
+  auth: {
+    signup: '/api/auth/signup',
+    signin: '/api/auth/signin',
+    refresh: '/api/auth/refresh',
+    resetPassword: '/api/auth/reset-password',
+  },
+  // User
+  user: {
+    profile: '/api/user/profile',
+  },
   // Brand briefs
-  createBrief: '/api/briefs',
-  getBrief: (id: string) => `/api/briefs/${id}`,
-  listBriefs: '/api/briefs',
-  
-  // User management
-  getProfile: '/api/user/profile',
-  updateProfile: '/api/user/profile',
-  
+  briefs: {
+    create: '/api/briefs',
+    list: '/api/briefs',
+    get: (id: string) => `/api/briefs/${id}`,
+    delete: (id: string) => `/api/briefs/${id}`,
+  },
   // Payments
-  createCheckoutSession: '/api/payments/checkout',
-  getSubscription: '/api/payments/subscription',
-  
+  payments: {
+    createCheckout: '/api/payments/create-checkout-session',
+    subscription: '/api/payments/subscription',
+    webhook: '/api/payments/webhook',
+  },
   // Admin
-  getMetrics: '/api/admin/metrics',
-  getUsers: '/api/admin/users',
-} as const; 
+  admin: {
+    metrics: '/api/admin/metrics',
+    users: '/api/admin/users',
+  },
+}
+
+// Auth API functions
+export const authAPI = {
+  signup: async (data: { email: string; password: string; display_name: string }) => {
+    const response = await api.post(endpoints.auth.signup, data)
+    return response.data
+  },
+
+  signin: async (data: { email: string; password: string }) => {
+    const response = await api.post(endpoints.auth.signin, data)
+    return response.data
+  },
+
+  refresh: async (token: string) => {
+    const response = await api.post(endpoints.auth.refresh, { token })
+    return response.data
+  },
+
+  resetPassword: async (email: string) => {
+    const response = await api.post(endpoints.auth.resetPassword, { email })
+    return response.data
+  },
+}
+
+export default api 

@@ -2,13 +2,15 @@ FROM golang:1.21-alpine
 
 WORKDIR /app
 
-# Install air for hot reloading
-RUN go install github.com/cosmtrek/air@latest
+# Install air for hot reloading (compatible version)
+RUN go install github.com/cosmtrek/air@v1.49.0
 
-# Copy go mod files
+# Copy go mod files first for better caching
 COPY go.mod go.sum ./
 
-# Download dependencies
+# Set Go proxy and download dependencies with retries
+ENV GOPROXY=https://proxy.golang.org,direct
+ENV GOSUMDB=sum.golang.org
 RUN go mod download
 
 # Copy source code

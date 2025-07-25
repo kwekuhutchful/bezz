@@ -69,7 +69,16 @@ func main() {
 	// API routes
 	api := router.Group("/api")
 	{
-		// Brand briefs routes
+		// Auth routes (public)
+		auth := api.Group("/auth")
+		{
+			auth.POST("/signup", handlerContainer.Auth.SignUp)
+			auth.POST("/signin", handlerContainer.Auth.SignIn)
+			auth.POST("/refresh", handlerContainer.Auth.RefreshToken)
+			auth.POST("/reset-password", handlerContainer.Auth.ResetPassword)
+		}
+
+		// Brand briefs routes (protected)
 		briefs := api.Group("/briefs")
 		briefs.Use(middleware.AuthRequired(serviceContainer.Firebase))
 		{

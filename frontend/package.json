@@ -12,16 +12,16 @@
     "clean": "rm -rf dist node_modules"
   },
   "dependencies": {
+    "@heroicons/react": "^2.0.18",
+    "axios": "^1.6.0",
+    "clsx": "^2.0.0",
+    "firebase": "^12.0.0",
+    "lucide-react": "^0.294.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-router-dom": "^6.20.0",
-    "firebase": "^10.7.0",
-    "axios": "^1.6.0",
-    "@heroicons/react": "^2.0.18",
     "react-hook-form": "^7.48.0",
     "react-hot-toast": "^2.4.1",
-    "lucide-react": "^0.294.0",
-    "clsx": "^2.0.0",
+    "react-router-dom": "^6.20.0",
     "tailwind-merge": "^2.0.0"
   },
   "devDependencies": {
@@ -40,4 +40,4 @@
     "vite": "^5.0.8",
     "vitest": "^1.0.4"
   }
-} 
+}

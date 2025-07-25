@@ -103,7 +103,7 @@ func (s *PaymentService) HandleWebhook(body []byte, signature string) (*WebhookE
 	}
 
 	webhookEvent := &WebhookEvent{
-		Type: event.Type,
+		Type: string(event.Type),
 		Data: event.Data.Raw,
 	}
 

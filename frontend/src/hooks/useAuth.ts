@@ -1,115 +1,240 @@
-import { useState, useEffect } from 'react';
-import { 
-  User as FirebaseUser, 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword,
-  signOut as firebaseSignOut,
-  onAuthStateChanged,
-  updateProfile
-} from 'firebase/auth';
-import { auth } from '@/lib/firebase';
-import { User } from '@/types';
-import { api, endpoints } from '@/lib/api';
+import { useState, useEffect } from 'react'
+import { User } from '../types'
+import { authAPI, setAuthToken } from '../lib/api'
+import toast from 'react-hot-toast'
 
-export const useAuth = () => {
-  const [user, setUser] = useState<User | null>(null);
-  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+interface AuthState {
+  user: User | null
+  loading: boolean
+  error: string | null
+}
 
+interface AuthActions {
+  signIn: (email: string, password: string) => Promise<void>
+  signUp: (email: string, password: string, displayName: string) => Promise<void>
+  signOut: () => void
+  resetPassword: (email: string) => Promise<void>
+  updateProfile: (displayName: string) => Promise<void>
+  refreshToken: () => Promise<void>
+}
+
+export function useAuth(): AuthState & AuthActions {
+  const [state, setState] = useState<AuthState>({
+    user: null,
+    loading: true,
+    error: null,
+  })
+
+  // Initialize auth state from localStorage
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      setFirebaseUser(firebaseUser);
-      
-      if (firebaseUser) {
+    const token = localStorage.getItem('authToken')
+    const userData = localStorage.getItem('userData')
+    
+    if (token && userData) {
+      try {
+        const user = JSON.parse(userData)
+        setState({
+          user,
+          loading: false,
+          error: null,
+        })
+        setAuthToken(token)
+      } catch (error) {
+        console.error('Failed to parse stored user data:', error)
+        localStorage.removeItem('authToken')
+        localStorage.removeItem('userData')
+        setState({
+          user: null,
+          loading: false,
+          error: null,
+        })
+      }
+    } else {
+      setState({
+        user: null,
+        loading: false,
+        error: null,
+      })
+    }
+  }, [])
+
+  // Auto-refresh token periodically
+  useEffect(() => {
+    if (state.user) {
+      const interval = setInterval(async () => {
         try {
-          // Fetch user profile from backend
-          const response = await api.get(endpoints.getProfile);
-          setUser(response.data.data);
+          await refreshToken()
         } catch (error) {
-          console.error('Failed to fetch user profile:', error);
-          // Create basic user object from Firebase user
-          setUser({
-            id: firebaseUser.uid,
-            email: firebaseUser.email!,
-            displayName: firebaseUser.displayName || undefined,
-            photoURL: firebaseUser.photoURL || undefined,
-            createdAt: new Date().toISOString(),
-            credits: 0,
-          });
+          console.error('Token refresh failed:', error)
         }
+      }, 50 * 60 * 1000) // Refresh every 50 minutes
+
+      return () => clearInterval(interval)
+    }
+  }, [state.user])
+
+  const signIn = async (email: string, password: string): Promise<void> => {
+    setState(prev => ({ ...prev, loading: true, error: null }))
+    
+    try {
+      const response = await authAPI.signin({ email, password })
+      
+      if (response.success) {
+        const { token, user } = response.data
+        setAuthToken(token)
+        localStorage.setItem('userData', JSON.stringify(user))
+        
+        setState({
+          user,
+          loading: false,
+          error: null,
+        })
+        
+        toast.success('Successfully signed in!')
       } else {
-        setUser(null);
+        throw new Error(response.error || 'Sign in failed')
       }
-      
-      setLoading(false);
-    });
-
-    return unsubscribe;
-  }, []);
-
-  const signIn = async (email: string, password: string) => {
-    try {
-      setError(null);
-      setLoading(true);
-      await signInWithEmailAndPassword(auth, email, password);
     } catch (error: any) {
-      setError(error.message);
-      throw error;
-    } finally {
-      setLoading(false);
+      const errorMessage = error.response?.data?.error || error.message || 'Sign in failed'
+      setState(prev => ({
+        ...prev,
+        loading: false,
+        error: errorMessage,
+      }))
+      throw new Error(errorMessage)
     }
-  };
+  }
 
-  const signUp = async (email: string, password: string, displayName?: string) => {
+  const signUp = async (email: string, password: string, displayName: string): Promise<void> => {
+    setState(prev => ({ ...prev, loading: true, error: null }))
+    
     try {
-      setError(null);
-      setLoading(true);
-      const result = await createUserWithEmailAndPassword(auth, email, password);
+      const response = await authAPI.signup({
+        email,
+        password,
+        display_name: displayName,
+      })
       
-      if (displayName && result.user) {
-        await updateProfile(result.user, { displayName });
+      if (response.success) {
+        const { token, user } = response.data
+        setAuthToken(token)
+        localStorage.setItem('userData', JSON.stringify(user))
+        
+        setState({
+          user,
+          loading: false,
+          error: null,
+        })
+        
+        toast.success('Account created successfully!')
+      } else {
+        throw new Error(response.error || 'Sign up failed')
       }
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.error || error.message || 'Sign up failed'
+      setState(prev => ({
+        ...prev,
+        loading: false,
+        error: errorMessage,
+      }))
+      throw new Error(errorMessage)
+    }
+  }
+
+  const signOut = (): void => {
+    setAuthToken(null)
+    localStorage.removeItem('userData')
+    setState({
+      user: null,
+      loading: false,
+      error: null,
+    })
+    toast.success('Successfully signed out!')
+  }
+
+  const resetPassword = async (email: string): Promise<void> => {
+    setState(prev => ({ ...prev, loading: true, error: null }))
+    
+    try {
+      const response = await authAPI.resetPassword(email)
       
-      return result;
+      if (response.success) {
+        toast.success('Password reset email sent!')
+      } else {
+        throw new Error(response.error || 'Password reset failed')
+      }
     } catch (error: any) {
-      setError(error.message);
-      throw error;
+      const errorMessage = error.response?.data?.error || error.message || 'Password reset failed'
+      setState(prev => ({
+        ...prev,
+        error: errorMessage,
+      }))
+      throw new Error(errorMessage)
     } finally {
-      setLoading(false);
+      setState(prev => ({ ...prev, loading: false }))
     }
-  };
+  }
 
-  const signOut = async () => {
+  const updateProfile = async (displayName: string): Promise<void> => {
+    if (!state.user) return
+    
+    setState(prev => ({ ...prev, loading: true, error: null }))
+    
     try {
-      setError(null);
-      await firebaseSignOut(auth);
+      // This would typically call a backend endpoint to update the user profile
+      // For now, we'll update the local state
+      const updatedUser = { ...state.user, displayName }
+      localStorage.setItem('userData', JSON.stringify(updatedUser))
+      
+      setState({
+        user: updatedUser,
+        loading: false,
+        error: null,
+      })
+      
+      toast.success('Profile updated successfully!')
     } catch (error: any) {
-      setError(error.message);
-      throw error;
+      const errorMessage = error.message || 'Profile update failed'
+      setState(prev => ({
+        ...prev,
+        loading: false,
+        error: errorMessage,
+      }))
+      throw new Error(errorMessage)
     }
-  };
+  }
 
-  const updateUserProfile = async (updates: Partial<User>) => {
+  const refreshToken = async (): Promise<void> => {
+    const currentToken = localStorage.getItem('authToken')
+    if (!currentToken) return
+    
     try {
-      setError(null);
-      const response = await api.put(endpoints.updateProfile, updates);
-      setUser(response.data.data);
-      return response.data.data;
-    } catch (error: any) {
-      setError(error.message);
-      throw error;
+      const response = await authAPI.refresh(currentToken)
+      
+      if (response.success) {
+        const { token, user } = response.data
+        setAuthToken(token)
+        localStorage.setItem('userData', JSON.stringify(user))
+        
+        setState(prev => ({
+          ...prev,
+          user,
+          error: null,
+        }))
+      }
+    } catch (error) {
+      console.error('Token refresh failed:', error)
+      signOut()
     }
-  };
+  }
 
   return {
-    user,
-    firebaseUser,
-    loading,
-    error,
+    ...state,
     signIn,
     signUp,
     signOut,
-    updateUserProfile,
-  };
-}; 
+    resetPassword,
+    updateProfile,
+    refreshToken,
+  }
+} 

@@ -45,6 +45,7 @@ Bezz AI is a comprehensive platform that generates brand strategies and advertis
    VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
    VITE_FIREBASE_PROJECT_ID=your_project_id
    FIREBASE_PROJECT_ID=your_project_id
+   FIREBASE_API_KEY=your_firebase_web_api_keu
    
    # OpenAI Configuration
    OPENAI_API_KEY=your_openai_api_key

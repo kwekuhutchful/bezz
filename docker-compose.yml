@@ -12,9 +12,6 @@ services:
       - /app/node_modules
     environment:
       - VITE_API_URL=http://localhost:8080
-      - VITE_FIREBASE_API_KEY=${VITE_FIREBASE_API_KEY}
-      - VITE_FIREBASE_AUTH_DOMAIN=${VITE_FIREBASE_AUTH_DOMAIN}
-      - VITE_FIREBASE_PROJECT_ID=${VITE_FIREBASE_PROJECT_ID}
     depends_on:
       - backend
 
@@ -30,6 +27,7 @@ services:
       - PORT=8080
       - GIN_MODE=debug
       - FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
+      - FIREBASE_API_KEY=${FIREBASE_API_KEY}
       - GOOGLE_APPLICATION_CREDENTIALS=/app/service-account.json
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}

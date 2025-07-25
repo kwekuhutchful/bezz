@@ -20,6 +20,7 @@ type Container struct {
 	Firestore         *firestore.Client
 	Storage           *storage.Client
 	OpenAI            *openai.Client
+	AuthService       *AuthService
 	AIService         *AIService
 	UserService       *UserService
 	BrandBriefService *BrandBriefService
@@ -56,7 +57,14 @@ func NewContainer(cfg *config.Config) (*Container, error) {
 	// Initialize Stripe
 	stripe.Key = cfg.StripeSecretKey
 
+	// Get Firebase Auth client
+	authClient, err := firebaseApp.Auth(context.Background())
+	if err != nil {
+		return nil, err
+	}
+
 	// Create service instances
+	authService := NewAuthService(authClient)
 	aiService := NewAIService(openaiClient)
 	userService := NewUserService(firestoreClient)
 	brandBriefService := NewBrandBriefService(firestoreClient, aiService, storageClient, cfg.GCSBucketName)
@@ -68,6 +76,7 @@ func NewContainer(cfg *config.Config) (*Container, error) {
 		Firestore:         firestoreClient,
 		Storage:           storageClient,
 		OpenAI:            openaiClient,
+		AuthService:       authService,
 		AIService:         aiService,
 		UserService:       userService,
 		BrandBriefService: brandBriefService,

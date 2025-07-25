@@ -157,3 +157,28 @@ type BrandBriefRequest struct {
 	Language       string `json:"language" binding:"required,oneof=en fr"`
 	AdditionalInfo string `json:"additionalInfo,omitempty"`
 }
+
+// Auth request/response models
+type SignUpRequest struct {
+	Email       string `json:"email" binding:"required,email"`
+	Password    string `json:"password" binding:"required,min=6"`
+	DisplayName string `json:"display_name" binding:"required"`
+}
+
+type SignInRequest struct {
+	Email    string `json:"email" binding:"required,email"`
+	Password string `json:"password" binding:"required"`
+}
+
+type RefreshTokenRequest struct {
+	Token string `json:"token" binding:"required"`
+}
+
+type ResetPasswordRequest struct {
+	Email string `json:"email" binding:"required,email"`
+}
+
+type AuthResponse struct {
+	Token string `json:"token"`
+	User  User   `json:"user"`
+}
