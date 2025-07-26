@@ -93,6 +93,7 @@ type DoAndDonts struct {
 // TargetSegment represents a target segment
 type TargetSegment struct {
 	Name              string   `json:"name" firestore:"name"`
+	Role              string   `json:"role" firestore:"role"`
 	Demographics      string   `json:"demographics" firestore:"demographics"`
 	Psychographics    string   `json:"psychographics" firestore:"psychographics"`
 	PainPoints        []string `json:"painPoints" firestore:"painPoints"`
@@ -181,4 +182,46 @@ type ResetPasswordRequest struct {
 type AuthResponse struct {
 	Token string `json:"token"`
 	User  User   `json:"user"`
+}
+
+// AI Pipeline Models
+
+// BriefGPTResponse represents the response from Brief-GPT
+type BriefGPTResponse struct {
+	BrandGoal string `json:"brand_goal"`
+	Audience  string `json:"audience"`
+	Tone      string `json:"tone"`
+	Vision    string `json:"vision"`
+}
+
+// StrategistGPTResponse represents the response from Strategist-GPT
+type StrategistGPTResponse struct {
+	PositioningStatement string                       `json:"positioning_statement"`
+	ValueProposition     string                       `json:"value_proposition"`
+	BrandPillars         []string                     `json:"brand_pillars"`
+	MessagingFramework   StrategistMessagingFramework `json:"messaging_framework"`
+	TargetSegments       []StrategistTargetSegment    `json:"target_segments"`
+	CampaignAngles       []CampaignAngle              `json:"campaign_angles"`
+}
+
+// StrategistMessagingFramework represents messaging framework from Strategist-GPT
+type StrategistMessagingFramework struct {
+	PrimaryMessage     string   `json:"primary_message"`
+	SupportingMessages []string `json:"supporting_messages"`
+}
+
+// StrategistTargetSegment represents target segment from Strategist-GPT
+type StrategistTargetSegment struct {
+	Name              string   `json:"name"`
+	Role              string   `json:"role"`
+	Demographics      string   `json:"demographics"`
+	Psychographics    string   `json:"psychographics"`
+	PainPoints        []string `json:"pain_points"`
+	PreferredChannels []string `json:"preferred_channels"`
+}
+
+// CampaignAngle represents a campaign angle
+type CampaignAngle struct {
+	Hook      string `json:"hook"`
+	Resonance string `json:"resonance"`
 }

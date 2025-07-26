@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"strings"
 
 	"github.com/sashabaranov/go-openai"
 
 	"bezz-backend/internal/models"
+	"bezz-backend/internal/prompts"
 )
 
 // AIService handles AI-related operations
@@ -21,6 +23,143 @@ func NewAIService(client *openai.Client) *AIService {
 	return &AIService{
 		client: client,
 	}
+}
+
+// ProcessBriefWithGPT processes a brand brief using Brief-GPT
+func (s *AIService) ProcessBriefWithGPT(ctx context.Context, brief *models.BrandBrief) (*models.BriefGPTResponse, error) {
+	prompt := fmt.Sprintf(prompts.BriefGPTPrompt,
+		brief.CompanyName,
+		brief.Sector,
+		brief.TargetAudience,
+		brief.Tone,
+		brief.Language,
+		brief.AdditionalInfo,
+	)
+
+	resp, err := s.client.CreateChatCompletion(ctx, openai.ChatCompletionRequest{
+		Model: openai.GPT4,
+		Messages: []openai.ChatCompletionMessage{
+			{
+				Role:    openai.ChatMessageRoleSystem,
+				Content: "You are Brief-GPT, an expert at structuring brand information. Always respond with valid JSON only.",
+			},
+			{
+				Role:    openai.ChatMessageRoleUser,
+				Content: prompt,
+			},
+		},
+		Temperature: 0.3, // Lower temperature for more consistent JSON output
+		MaxTokens:   800,
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("Brief-GPT API call failed: %w", err)
+	}
+
+	if len(resp.Choices) == 0 {
+		return nil, fmt.Errorf("no response from Brief-GPT")
+	}
+
+	content := strings.TrimSpace(resp.Choices[0].Message.Content)
+
+	var briefResponse models.BriefGPTResponse
+	if err := json.Unmarshal([]byte(content), &briefResponse); err != nil {
+		log.Printf("Brief-GPT response parsing failed. Content: %s", content)
+		return nil, fmt.Errorf("failed to parse Brief-GPT response: %w", err)
+	}
+
+	return &briefResponse, nil
+}
+
+// GenerateStrategyWithGPT generates brand strategy using Strategist-GPT
+func (s *AIService) GenerateStrategyWithGPT(ctx context.Context, briefSummary *models.BriefGPTResponse) (*models.StrategistGPTResponse, error) {
+	// Convert brief summary to JSON string for the prompt
+	briefJSON, err := json.Marshal(briefSummary)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal brief summary: %w", err)
+	}
+
+	prompt := fmt.Sprintf(prompts.StrategistGPTPrompt, string(briefJSON))
+
+	resp, err := s.client.CreateChatCompletion(ctx, openai.ChatCompletionRequest{
+		Model: openai.GPT4,
+		Messages: []openai.ChatCompletionMessage{
+			{
+				Role:    openai.ChatMessageRoleSystem,
+				Content: "You are Strategist-GPT, an expert brand strategist. Always respond with valid JSON only.",
+			},
+			{
+				Role:    openai.ChatMessageRoleUser,
+				Content: prompt,
+			},
+		},
+		Temperature: 0.4,
+		MaxTokens:   2000,
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("Strategist-GPT API call failed: %w", err)
+	}
+
+	if len(resp.Choices) == 0 {
+		return nil, fmt.Errorf("no response from Strategist-GPT")
+	}
+
+	content := strings.TrimSpace(resp.Choices[0].Message.Content)
+
+	var strategyResponse models.StrategistGPTResponse
+	if err := json.Unmarshal([]byte(content), &strategyResponse); err != nil {
+		log.Printf("Strategist-GPT response parsing failed. Content: %s", content)
+		return nil, fmt.Errorf("failed to parse Strategist-GPT response: %w", err)
+	}
+
+	return &strategyResponse, nil
+}
+
+// ProcessBriefPipeline executes the complete Brief-GPT -> Strategist-GPT pipeline
+func (s *AIService) ProcessBriefPipeline(ctx context.Context, brief *models.BrandBrief) (*models.BrandStrategy, error) {
+	// Step 1: Process brief with Brief-GPT
+	briefSummary, err := s.ProcessBriefWithGPT(ctx, brief)
+	if err != nil {
+		return nil, fmt.Errorf("Brief-GPT processing failed: %w", err)
+	}
+
+	// Step 2: Generate strategy with Strategist-GPT
+	strategyResponse, err := s.GenerateStrategyWithGPT(ctx, briefSummary)
+	if err != nil {
+		return nil, fmt.Errorf("Strategist-GPT processing failed: %w", err)
+	}
+
+	// Step 3: Convert to models.BrandStrategy format
+	strategy := &models.BrandStrategy{
+		Positioning:      strategyResponse.PositioningStatement,
+		ValueProposition: strategyResponse.ValueProposition,
+		BrandPillars:     strategyResponse.BrandPillars,
+		MessagingFramework: models.MessagingFramework{
+			PrimaryMessage:     strategyResponse.MessagingFramework.PrimaryMessage,
+			SupportingMessages: strategyResponse.MessagingFramework.SupportingMessages,
+		},
+		TargetSegments: s.convertTargetSegments(strategyResponse.TargetSegments),
+	}
+
+	return strategy, nil
+}
+
+// convertTargetSegments converts StrategistGPT target segments to models format
+func (s *AIService) convertTargetSegments(segments []models.StrategistTargetSegment) []models.TargetSegment {
+	result := make([]models.TargetSegment, len(segments))
+	for i, seg := range segments {
+		result[i] = models.TargetSegment{
+			Name:              seg.Name,
+			Role:              seg.Role,
+			Demographics:      seg.Demographics,
+			Psychographics:    seg.Psychographics,
+			PainPoints:        seg.PainPoints,
+			PreferredChannels: seg.PreferredChannels,
+			Motivations:       []string{}, // Can be populated from other sources
+		}
+	}
+	return result
 }
 
 // GenerateBrandStrategy generates a complete brand strategy from a brief

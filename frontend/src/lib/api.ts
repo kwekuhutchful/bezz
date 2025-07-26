@@ -82,7 +82,7 @@ export const endpoints = {
   },
   // Payments
   payments: {
-    createCheckout: '/api/payments/create-checkout-session',
+    createCheckout: '/api/payments/checkout',
     subscription: '/api/payments/subscription',
     webhook: '/api/payments/webhook',
   },

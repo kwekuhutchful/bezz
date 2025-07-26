@@ -46,6 +46,8 @@ const BrandBriefPage: React.FC = () => {
     formState: { errors },
     watch,
     trigger,
+    getValues,
+    setValue,
   } = useForm<BrandBriefForm>();
 
   const watchedValues = watch();
@@ -578,21 +580,28 @@ const BrandBriefPage: React.FC = () => {
                 {/* Suggestion Prompts */}
                 <div className="mb-4 flex flex-wrap gap-2">
                   <span className="text-xs text-gray-500">Consider mentioning:</span>
-                  {['Competitors', 'Unique selling points', 'Brand values', 'Goals', 'Challenges'].map((prompt) => (
-                    <span
-                      key={prompt}
-                      className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700 cursor-pointer hover:bg-gray-200 transition-all"
-                      onClick={() => {
-                        const textarea = document.getElementById('additionalInfo') as HTMLTextAreaElement;
-                        if (textarea) {
-                          textarea.value += `${prompt}: `;
-                          textarea.focus();
-                        }
-                      }}
-                    >
-                      {prompt}
-                    </span>
-                  ))}
+                                  {['Competitors', 'Unique selling points', 'Brand values', 'Goals', 'Challenges'].map((prompt) => (
+                  <span
+                    key={prompt}
+                    className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700 cursor-pointer hover:bg-gray-200 transition-all"
+                    onClick={() => {
+                      const currentValue = getValues('additionalInfo') || '';
+                      const newValue = currentValue + (currentValue ? '\n\n' : '') + `${prompt}: `;
+                      setValue('additionalInfo', newValue);
+                      // Focus the textarea
+                      const textarea = document.getElementById('additionalInfo') as HTMLTextAreaElement;
+                      if (textarea) {
+                        textarea.focus();
+                        // Move cursor to end
+                        setTimeout(() => {
+                          textarea.setSelectionRange(newValue.length, newValue.length);
+                        }, 0);
+                      }
+                    }}
+                  >
+                    {prompt}
+                  </span>
+                ))}
                 </div>
 
                 <textarea

@@ -26,7 +26,12 @@ import {
   VideoCameraIcon,
   NewspaperIcon,
   DevicePhoneMobileIcon,
-  ComputerDesktopIcon
+  ComputerDesktopIcon,
+  BuildingOfficeIcon,
+  TagIcon,
+  ChevronRightIcon,
+  FolderIcon,
+  PaperClipIcon
 } from '@heroicons/react/24/outline';
 import { CheckCircleIcon as CheckCircleIconSolid } from '@heroicons/react/24/solid';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
@@ -41,6 +46,7 @@ const ResultsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [selectedCampaign, setSelectedCampaign] = useState<number | null>(null);
+  const [expandedSegment, setExpandedSegment] = useState<number | null>(null);
 
   useEffect(() => {
     if (id) {
@@ -170,10 +176,26 @@ const ResultsPage: React.FC = () => {
   const statusConfig = getStatusConfig();
   const StatusIcon = statusConfig?.icon;
 
+  // Create safe data structure with fallbacks
+  const safeResults = {
+    strategy: brief.results?.strategy || {
+      positioning: "Strategy being generated...",
+      valueProposition: "Value proposition being developed...",
+      brandPillars: [],
+      messagingFramework: {
+        primaryMessage: "Primary message being crafted...",
+        supportingMessages: []
+      },
+      targetSegments: []
+    },
+    ads: brief.results?.ads || [],
+    brief: brief.results?.brief || {}
+  };
+
   const tabs = [
     { id: 'overview' as TabType, name: 'Overview', icon: SparklesIcon, description: 'Executive summary' },
     { id: 'strategy' as TabType, name: 'Brand Strategy', icon: LightBulbIcon, description: 'Core positioning' },
-    { id: 'campaigns' as TabType, name: 'Campaigns', icon: MegaphoneIcon, description: `${brief.results?.ads.length || 0} ready`, count: brief.results?.ads.length },
+    { id: 'campaigns' as TabType, name: 'Campaigns', icon: MegaphoneIcon, description: `${safeResults.ads.length} ready`, count: safeResults.ads.length },
     { id: 'assets' as TabType, name: 'Assets', icon: ArrowDownTrayIcon, description: 'Download & export' }
   ];
 
@@ -182,11 +204,47 @@ const ResultsPage: React.FC = () => {
     { name: 'Brief Analysis', completed: true },
     { name: 'Strategy Development', completed: brief.status === 'completed' },
     { name: 'Campaign Creation', completed: brief.status === 'completed' },
-    { name: 'Asset Generation', completed: brief.status === 'completed' && brief.results?.ads.some(ad => ad.imageUrl) }
+    { name: 'Asset Generation', completed: brief.status === 'completed' && safeResults.ads.some(ad => ad.imageUrl) }
   ];
 
   const completedSteps = completionSteps.filter(step => step.completed).length;
   const progressPercentage = (completedSteps / completionSteps.length) * 100;
+
+  // Show loading state if results aren't ready yet
+  if (!brief.results && brief.status === 'processing') {
+    return (
+      <div className="w-full max-w-7xl mx-auto">
+        <div className="text-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Generating Your Brand Strategy...</h2>
+          <p className="text-gray-600">Our AI is crafting your positioning, messaging, and target segments.</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state if processing failed
+  if (brief.status === 'failed') {
+    return (
+      <div className="w-full max-w-7xl mx-auto">
+        <div className="text-center py-12">
+          <div className="text-red-500 mb-4">
+            <svg className="h-12 w-12 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 15.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Strategy Generation Failed</h2>
+          <p className="text-gray-600 mb-4">There was an error generating your brand strategy.</p>
+          <button
+            onClick={() => navigate('/brief')}
+            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Create New Brief
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-7xl mx-auto">
@@ -317,142 +375,173 @@ const ResultsPage: React.FC = () => {
         </div>
       )}
 
-      {/* Tab Navigation */}
+      {/* Simplified Tab Navigation */}
       {brief.status === 'completed' && brief.results && (
         <>
-          <div className="mb-8">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-2">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                {tabs.map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`
-                      flex items-center p-4 rounded-lg transition-all
-                      ${activeTab === tab.id 
-                        ? 'bg-gray-50 shadow-sm' 
-                        : 'hover:bg-gray-50'
-                      }
-                    `}
-                  >
-                    <div className={`
-                      p-2 rounded-lg mr-3
-                      ${activeTab === tab.id 
-                        ? 'bg-gray-800' 
-                        : 'bg-gray-100'
-                      }
-                    `}>
-                      <tab.icon className={`h-5 w-5 ${activeTab === tab.id ? 'text-white' : 'text-gray-600'}`} />
-                    </div>
-                    <div className="text-left">
-                      <p className={`text-sm font-medium ${activeTab === tab.id ? 'text-gray-900' : 'text-gray-700'}`}>
-                        {tab.name}
-                        {tab.count && (
-                          <span className="ml-2 text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full">
-                            {tab.count}
-                          </span>
-                        )}
-                      </p>
-                      <p className="text-xs text-gray-500">{tab.description}</p>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
+          <div className="mb-8 border-b border-gray-200">
+            <nav className="-mb-px flex space-x-8">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`
+                    py-3 px-1 border-b-2 font-medium text-sm transition-all
+                    ${activeTab === tab.id 
+                      ? 'border-gray-900 text-gray-900' 
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }
+                  `}
+                >
+                  <div className="flex items-center">
+                    <tab.icon className={`h-4 w-4 mr-2 ${activeTab === tab.id ? 'text-gray-900' : 'text-gray-400'}`} />
+                    {tab.name}
+                    {tab.count && tab.count > 0 && (
+                      <span className={`ml-2 text-xs px-2 py-0.5 rounded-full ${
+                        activeTab === tab.id 
+                          ? 'bg-gray-900 text-white' 
+                          : 'bg-gray-100 text-gray-600'
+                      }`}>
+                        {tab.count}
+                      </span>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </nav>
           </div>
 
           {/* Overview Tab */}
           {activeTab === 'overview' && (
-            <div className="space-y-6 animate-fade-in">
-              {/* Executive Summary */}
-              <div className="bg-gradient-to-r from-gray-700 to-gray-800 rounded-2xl p-8 text-white">
-                <h2 className="text-2xl font-bold mb-4 flex items-center">
-                  <SparklesIcon className="h-7 w-7 mr-3" />
-                  Executive Summary
-                </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div>
-                    <h3 className="text-lg font-semibold mb-2 text-gray-200">Brand Positioning</h3>
-                    <p className="text-gray-300 leading-relaxed">
-                      {brief.results.strategy.positioning}
+            <div className="space-y-8 animate-fade-in">
+              {/* Executive Summary - Two primary cards matching strategy style */}
+              <div className="space-y-4">
+                {/* Brand Positioning */}
+                <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                  <div className="border-l-4 border-blue-500 pl-6 pr-8 py-6">
+                    <div className="flex items-center mb-3">
+                      <div className="p-1.5 bg-blue-100 rounded-lg mr-3">
+                        <RocketLaunchIcon className="h-4 w-4 text-blue-600" />
+                      </div>
+                      <h2 className="text-lg font-semibold text-gray-900">Brand Positioning</h2>
+                    </div>
+                    <p className="text-gray-700 leading-relaxed text-base">
+                      {safeResults.strategy.positioning}
                     </p>
                   </div>
-                  <div>
-                    <h3 className="text-lg font-semibold mb-2 text-gray-200">Value Proposition</h3>
-                    <p className="text-gray-300 leading-relaxed">
-                      {brief.results.strategy.valueProposition}
+                </div>
+
+                {/* Value Proposition */}
+                <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                  <div className="border-l-4 border-purple-500 pl-6 pr-8 py-6">
+                    <div className="flex items-center mb-3">
+                      <div className="p-1.5 bg-purple-100 rounded-lg mr-3">
+                        <StarIcon className="h-4 w-4 text-purple-600" />
+                      </div>
+                      <h2 className="text-lg font-semibold text-gray-900">Value Proposition</h2>
+                    </div>
+                    <p className="text-gray-700 leading-relaxed text-base">
+                      {safeResults.strategy.valueProposition}
                     </p>
                   </div>
                 </div>
               </div>
 
-              {/* Key Metrics */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                  <div className="flex items-center justify-between mb-2">
-                    <UserGroupIcon className="h-5 w-5 text-gray-600" />
-                    <span className="text-2xl font-bold text-gray-900">
-                      {brief.results.strategy.targetSegments.length}
-                    </span>
+              {/* Key Metrics - Clean cards with color accents */}
+              <div className="bg-white rounded-lg border border-gray-200 p-6">
+                <h3 className="text-sm font-medium text-gray-700 mb-4">Strategy Components</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200 hover:bg-indigo-50 hover:border-indigo-200 transition-all">
+                    <div className="flex items-center mb-3">
+                      <div className="p-1.5 bg-indigo-100 rounded">
+                        <UserGroupIcon className="h-3.5 w-3.5 text-indigo-600" />
+                      </div>
+                    </div>
+                    <p className="text-2xl font-semibold text-gray-900 mb-1">
+                      {safeResults.strategy.targetSegments.length}
+                    </p>
+                    <p className="text-xs text-gray-600">Target Segments</p>
                   </div>
-                  <p className="text-sm text-gray-600">Target Segments</p>
-                </div>
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                  <div className="flex items-center justify-between mb-2">
-                    <MegaphoneIcon className="h-5 w-5 text-gray-600" />
-                    <span className="text-2xl font-bold text-gray-900">
-                      {brief.results.ads.length}
-                    </span>
+                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200 hover:bg-purple-50 hover:border-purple-200 transition-all">
+                    <div className="flex items-center mb-3">
+                      <div className="p-1.5 bg-purple-100 rounded">
+                        <MegaphoneIcon className="h-3.5 w-3.5 text-purple-600" />
+                      </div>
+                    </div>
+                    <p className="text-2xl font-semibold text-gray-900 mb-1">
+                      {safeResults.ads.length}
+                    </p>
+                    <p className="text-xs text-gray-600">Ad Campaigns</p>
                   </div>
-                  <p className="text-sm text-gray-600">Ad Campaigns</p>
-                </div>
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                  <div className="flex items-center justify-between mb-2">
-                    <HeartIcon className="h-5 w-5 text-gray-600" />
-                    <span className="text-2xl font-bold text-gray-900">
-                      {brief.results.strategy.brandPillars.length}
-                    </span>
+                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200 hover:bg-emerald-50 hover:border-emerald-200 transition-all">
+                    <div className="flex items-center mb-3">
+                      <div className="p-1.5 bg-emerald-100 rounded">
+                        <HeartIcon className="h-3.5 w-3.5 text-emerald-600" />
+                      </div>
+                    </div>
+                    <p className="text-2xl font-semibold text-gray-900 mb-1">
+                      {safeResults.strategy.brandPillars.length}
+                    </p>
+                    <p className="text-xs text-gray-600">Brand Pillars</p>
                   </div>
-                  <p className="text-sm text-gray-600">Brand Pillars</p>
-                </div>
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                  <div className="flex items-center justify-between mb-2">
-                    <ChatBubbleLeftRightIcon className="h-5 w-5 text-gray-600" />
-                    <span className="text-2xl font-bold text-gray-900">
-                      {brief.results.strategy.messagingFramework.supportingMessages.length + 1}
-                    </span>
+                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200 hover:bg-amber-50 hover:border-amber-200 transition-all">
+                    <div className="flex items-center mb-3">
+                      <div className="p-1.5 bg-amber-100 rounded">
+                        <ChatBubbleLeftRightIcon className="h-3.5 w-3.5 text-amber-600" />
+                      </div>
+                    </div>
+                    <p className="text-2xl font-semibold text-gray-900 mb-1">
+                      {safeResults.strategy.messagingFramework.supportingMessages.length + 1}
+                    </p>
+                    <p className="text-xs text-gray-600">Key Messages</p>
                   </div>
-                  <p className="text-sm text-gray-600">Key Messages</p>
                 </div>
               </div>
 
-              {/* Quick Actions */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Quick Actions - Subtle with color accents */}
+              <div className="bg-white rounded-lg border border-gray-200 p-6">
+                <h3 className="text-sm font-medium text-gray-700 mb-4">Explore Your Strategy</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <button
                     onClick={() => setActiveTab('strategy')}
-                    className="p-4 border border-gray-200 rounded-lg hover:border-gray-300 hover:shadow-sm transition-all text-left"
+                    className="group p-4 rounded-lg hover:bg-blue-50 transition-all text-left"
                   >
-                    <LightBulbIcon className="h-6 w-6 text-gray-600 mb-2" />
-                    <h4 className="font-medium text-gray-900">View Full Strategy</h4>
-                    <p className="text-sm text-gray-600 mt-1">Explore positioning & messaging</p>
+                    <div className="flex items-start">
+                      <div className="p-2 bg-blue-100 rounded-lg group-hover:bg-blue-200 transition-colors">
+                        <LightBulbIcon className="h-4 w-4 text-blue-600" />
+                      </div>
+                      <div className="ml-3">
+                        <h4 className="text-sm font-medium text-gray-900">Brand Strategy</h4>
+                        <p className="text-xs text-gray-600 mt-1">Positioning & messaging</p>
+                      </div>
+                    </div>
                   </button>
                   <button
                     onClick={() => setActiveTab('campaigns')}
-                    className="p-4 border border-gray-200 rounded-lg hover:border-gray-300 hover:shadow-sm transition-all text-left"
+                    className="group p-4 rounded-lg hover:bg-purple-50 transition-all text-left"
                   >
-                    <MegaphoneIcon className="h-6 w-6 text-gray-600 mb-2" />
-                    <h4 className="font-medium text-gray-900">Browse Campaigns</h4>
-                    <p className="text-sm text-gray-600 mt-1">Ready-to-use ad creatives</p>
+                    <div className="flex items-start">
+                      <div className="p-2 bg-purple-100 rounded-lg group-hover:bg-purple-200 transition-colors">
+                        <MegaphoneIcon className="h-4 w-4 text-purple-600" />
+                      </div>
+                      <div className="ml-3">
+                        <h4 className="text-sm font-medium text-gray-900">Ad Campaigns</h4>
+                        <p className="text-xs text-gray-600 mt-1">Ready-to-use concepts</p>
+                      </div>
+                    </div>
                   </button>
                   <button
                     onClick={() => setActiveTab('assets')}
-                    className="p-4 border border-gray-200 rounded-lg hover:border-gray-300 hover:shadow-sm transition-all text-left"
+                    className="group p-4 rounded-lg hover:bg-green-50 transition-all text-left"
                   >
-                    <ArrowDownTrayIcon className="h-6 w-6 text-gray-600 mb-2" />
-                    <h4 className="font-medium text-gray-900">Download Assets</h4>
-                    <p className="text-sm text-gray-600 mt-1">Export to various platforms</p>
+                    <div className="flex items-start">
+                      <div className="p-2 bg-green-100 rounded-lg group-hover:bg-green-200 transition-colors">
+                        <ArrowDownTrayIcon className="h-4 w-4 text-green-600" />
+                      </div>
+                      <div className="ml-3">
+                        <h4 className="text-sm font-medium text-gray-900">Export Assets</h4>
+                        <p className="text-xs text-gray-600 mt-1">Download & share</p>
+                      </div>
+                    </div>
                   </button>
                 </div>
               </div>
@@ -461,78 +550,81 @@ const ResultsPage: React.FC = () => {
 
           {/* Strategy Tab */}
           {activeTab === 'strategy' && (
-            <div className="space-y-6 animate-fade-in">
-              {/* Brand Positioning */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
-                <div className="flex items-start mb-6">
-                  <div className="p-3 bg-gray-100 rounded-lg mr-4">
-                    <RocketLaunchIcon className="h-6 w-6 text-gray-700" />
+            <div className="space-y-8 animate-fade-in">
+              {/* Brand Positioning - Primary focus with blue accent */}
+              <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                <div className="border-l-4 border-blue-500 pl-6 pr-8 py-6">
+                  <div className="flex items-center mb-3">
+                    <div className="p-1.5 bg-blue-100 rounded-lg mr-3">
+                      <RocketLaunchIcon className="h-4 w-4 text-blue-600" />
+                    </div>
+                    <h2 className="text-lg font-semibold text-gray-900">Brand Positioning</h2>
                   </div>
-                  <div className="flex-1">
-                    <h2 className="text-xl font-bold text-gray-900 mb-3">Brand Positioning</h2>
-                    <p className="text-gray-700 leading-relaxed text-lg">
-                      {brief.results.strategy.positioning}
-                    </p>
-                  </div>
+                  <p className="text-gray-700 leading-relaxed text-base">
+                    {safeResults.strategy.positioning}
+                  </p>
                 </div>
               </div>
 
-              {/* Value Proposition */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
-                <div className="flex items-start mb-6">
-                  <div className="p-3 bg-gray-100 rounded-lg mr-4">
-                    <StarIcon className="h-6 w-6 text-gray-700" />
+              {/* Value Proposition - Secondary with purple accent */}
+              <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                <div className="border-l-4 border-purple-500 pl-6 pr-8 py-6">
+                  <div className="flex items-center mb-3">
+                    <div className="p-1.5 bg-purple-100 rounded-lg mr-3">
+                      <StarIcon className="h-4 w-4 text-purple-600" />
+                    </div>
+                    <h2 className="text-lg font-semibold text-gray-900">Value Proposition</h2>
                   </div>
-                  <div className="flex-1">
-                    <h2 className="text-xl font-bold text-gray-900 mb-3">Value Proposition</h2>
-                    <p className="text-gray-700 leading-relaxed text-lg">
-                      {brief.results.strategy.valueProposition}
-                    </p>
-                  </div>
+                  <p className="text-gray-700 leading-relaxed text-base">
+                    {safeResults.strategy.valueProposition}
+                  </p>
                 </div>
               </div>
 
-              {/* Brand Pillars */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
-                <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
-                  <HeartIcon className="h-6 w-6 mr-3 text-gray-700" />
-                  Brand Pillars
-                </h2>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {brief.results.strategy.brandPillars.map((pillar, index) => (
-                    <div key={index} className="relative group">
-                      <div className="absolute inset-0 bg-gradient-to-r from-gray-600 to-gray-700 rounded-xl blur opacity-0 group-hover:opacity-10 transition-all"></div>
-                      <div className="relative bg-gray-50 rounded-xl p-6 border border-gray-200 group-hover:border-gray-300 transition-all">
-                        <div className="flex items-center justify-center w-12 h-12 bg-white rounded-lg shadow-sm mb-4">
-                          <span className="text-lg font-bold text-gray-700">{index + 1}</span>
+              {/* Brand Pillars - Grid with emerald accents */}
+              <div className="bg-white rounded-lg border border-gray-200 p-8">
+                <div className="flex items-center mb-6">
+                  <div className="p-1.5 bg-emerald-100 rounded-lg mr-3">
+                    <HeartIcon className="h-4 w-4 text-emerald-600" />
+                  </div>
+                  <h2 className="text-lg font-semibold text-gray-900">Brand Pillars</h2>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {safeResults.strategy.brandPillars.map((pillar, index) => (
+                    <div key={index} className="group">
+                      <div className="bg-gray-50 rounded-lg p-6 border border-gray-200 hover:bg-emerald-50 hover:border-emerald-200 transition-all">
+                        <div className="flex items-center justify-center w-10 h-10 bg-white rounded-full border-2 border-emerald-200 mb-4 group-hover:border-emerald-300">
+                          <span className="text-sm font-bold text-emerald-600">{index + 1}</span>
                         </div>
-                        <h3 className="font-semibold text-gray-900 text-lg">{pillar}</h3>
+                        <h3 className="font-medium text-gray-900">{pillar}</h3>
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
 
-              {/* Messaging Framework */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
-                <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
-                  <ChatBubbleLeftRightIcon className="h-6 w-6 mr-3 text-gray-700" />
-                  Messaging Framework
-                </h2>
-                <div className="space-y-6">
-                  <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl p-6">
-                    <h3 className="font-semibold text-gray-900 mb-3 text-lg">Primary Message</h3>
-                    <p className="text-gray-700 leading-relaxed text-lg">
-                      {brief.results.strategy.messagingFramework.primaryMessage}
+              {/* Messaging Framework - Clean list with amber accent */}
+              <div className="bg-white rounded-lg border border-gray-200 p-8">
+                <div className="flex items-center mb-6">
+                  <div className="p-1.5 bg-amber-100 rounded-lg mr-3">
+                    <ChatBubbleLeftRightIcon className="h-4 w-4 text-amber-600" />
+                  </div>
+                  <h2 className="text-lg font-semibold text-gray-900">Messaging Framework</h2>
+                </div>
+                <div className="space-y-4">
+                  <div className="border-l-2 border-amber-200 pl-4">
+                    <h3 className="text-sm font-medium text-gray-700 mb-2">Primary Message</h3>
+                    <p className="text-gray-900 leading-relaxed">
+                      {safeResults.strategy.messagingFramework.primaryMessage}
                     </p>
                   </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900 mb-4">Supporting Messages</h3>
-                    <div className="space-y-3">
-                      {brief.results.strategy.messagingFramework.supportingMessages.map((message, index) => (
-                        <div key={index} className="flex items-start">
-                          <CheckCircleIconSolid className="h-5 w-5 text-green-600 mr-3 mt-0.5 flex-shrink-0" />
-                          <p className="text-gray-700">{message}</p>
+                  <div className="mt-6">
+                    <h3 className="text-sm font-medium text-gray-700 mb-3">Supporting Messages</h3>
+                    <div className="space-y-2">
+                      {safeResults.strategy.messagingFramework.supportingMessages.map((message, index) => (
+                        <div key={index} className="flex items-start pl-4">
+                          <CheckCircleIconSolid className="h-4 w-4 text-amber-500 mr-2 mt-0.5 flex-shrink-0" />
+                          <p className="text-gray-700 text-sm">{message}</p>
                         </div>
                       ))}
                     </div>
@@ -540,41 +632,68 @@ const ResultsPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Target Segments */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
-                <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
-                  <UserGroupIcon className="h-6 w-6 mr-3 text-gray-700" />
-                  Target Segments
-                </h2>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {brief.results.strategy.targetSegments.map((segment, index) => (
-                    <div key={index} className="border border-gray-200 rounded-xl p-6 hover:border-gray-300 hover:shadow-sm transition-all">
-                      <div className="flex items-start justify-between mb-4">
-                        <h3 className="text-lg font-bold text-gray-900">{segment.name}</h3>
-                        <span className="px-3 py-1 bg-gray-100 text-gray-700 text-sm font-medium rounded-full">
-                          Segment {index + 1}
-                        </span>
-                      </div>
-                      <div className="space-y-3">
-                        <div>
-                          <p className="text-sm font-medium text-gray-500 mb-1">Demographics</p>
-                          <p className="text-gray-700">{segment.demographics}</p>
+              {/* Target Segments - Expandable cards with indigo accent */}
+              <div className="bg-white rounded-lg border border-gray-200 p-8">
+                <div className="flex items-center mb-6">
+                  <div className="p-1.5 bg-indigo-100 rounded-lg mr-3">
+                    <UserGroupIcon className="h-4 w-4 text-indigo-600" />
+                  </div>
+                  <h2 className="text-lg font-semibold text-gray-900">Target Segments</h2>
+                </div>
+                <div className="space-y-4">
+                  {safeResults.strategy.targetSegments.map((segment, index) => (
+                    <div 
+                      key={index} 
+                      className="border border-gray-200 rounded-lg overflow-hidden hover:border-indigo-200 transition-all"
+                    >
+                      <button
+                        onClick={() => setExpandedSegment(expandedSegment === index ? null : index)}
+                        className="w-full p-6 text-left flex items-center justify-between hover:bg-gray-50 transition-colors"
+                      >
+                        <div className="flex items-center">
+                          <div className="w-2 h-2 bg-indigo-400 rounded-full mr-3"></div>
+                          <h3 className="font-medium text-gray-900">{segment.name}</h3>
+
                         </div>
-                        <div>
-                          <p className="text-sm font-medium text-gray-500 mb-1">Psychographics</p>
-                          <p className="text-gray-700">{segment.psychographics}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-gray-500 mb-2">Preferred Channels</p>
-                          <div className="flex flex-wrap gap-2">
-                            {segment.preferredChannels.map((channel, idx) => (
-                              <span key={idx} className="px-3 py-1 bg-gray-50 text-gray-700 text-sm rounded-lg border border-gray-200">
-                                {channel}
-                              </span>
-                            ))}
+                        <ChevronRightIcon className={`h-5 w-5 text-gray-400 transition-transform ${expandedSegment === index ? 'rotate-90' : ''}`} />
+                      </button>
+                      {expandedSegment === index && (
+                        <div className="px-6 pb-6 space-y-4 animate-slide-up">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Demographics</p>
+                              <p className="text-sm text-gray-700">{segment.demographics}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Psychographics</p>
+                              <p className="text-sm text-gray-700">{segment.psychographics}</p>
+                            </div>
+                          </div>
+                          {segment.painPoints && segment.painPoints.length > 0 && (
+                            <div>
+                              <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Pain Points</p>
+                              <div className="space-y-1">
+                                {segment.painPoints.map((pain, idx) => (
+                                  <div key={idx} className="flex items-start">
+                                    <div className="w-1.5 h-1.5 bg-red-400 rounded-full mt-1.5 mr-2 flex-shrink-0"></div>
+                                    <p className="text-sm text-gray-700">{pain}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          <div>
+                            <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Preferred Channels</p>
+                            <div className="flex flex-wrap gap-2">
+                              {segment.preferredChannels.map((channel, idx) => (
+                                <span key={idx} className="px-2.5 py-1 bg-indigo-50 text-indigo-700 text-xs font-medium rounded-md">
+                                  {channel}
+                                </span>
+                              ))}
+                            </div>
                           </div>
                         </div>
-                      </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -585,55 +704,54 @@ const ResultsPage: React.FC = () => {
           {/* Campaigns Tab */}
           {activeTab === 'campaigns' && (
             <div className="space-y-6 animate-fade-in">
-              {/* Campaign Filters */}
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold text-gray-900">Generated Campaigns</h2>
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm text-gray-600">Filter by:</span>
-                  <select className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-gray-500 focus:border-gray-500">
-                    <option value="">All Platforms</option>
-                    <option value="facebook">Facebook</option>
-                    <option value="instagram">Instagram</option>
-                    <option value="linkedin">LinkedIn</option>
-                  </select>
+              {/* Campaign Header */}
+              <div className="bg-white rounded-lg border border-gray-200 p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900">Ad Campaigns</h2>
+                    <p className="text-sm text-gray-600 mt-1">{safeResults.ads.length} ready-to-use campaigns generated</p>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <select className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                      <option value="">All Platforms</option>
+                      <option value="facebook">Facebook</option>
+                      <option value="instagram">Instagram</option>
+                      <option value="linkedin">LinkedIn</option>
+                    </select>
+                    <button className="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg text-sm font-medium hover:bg-purple-200 transition-colors">
+                      Export All
+                    </button>
+                  </div>
                 </div>
               </div>
 
-              {/* Campaign Grid */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {brief.results.ads.map((campaign, index) => {
+              {/* Campaign List - Cleaner layout */}
+              <div className="space-y-4">
+                {safeResults.ads.map((campaign, index) => {
                   const PlatformIcon = platformIcons[campaign.platform.toLowerCase()] || GlobeAltIcon;
                   const FormatIcon = formatIcons[campaign.format.toLowerCase()] || PhotoIcon;
 
                   return (
                     <div 
                       key={index} 
-                      className={`
-                        bg-white rounded-xl shadow-sm border transition-all cursor-pointer
-                        ${selectedCampaign === index 
-                          ? 'border-gray-800 shadow-lg' 
-                          : 'border-gray-100 hover:border-gray-300 hover:shadow-md'
-                        }
-                      `}
-                      onClick={() => setSelectedCampaign(selectedCampaign === index ? null : index)}
+                      className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:border-purple-200 transition-all"
                     >
                       <div className="p-6">
                         {/* Campaign Header */}
                         <div className="flex items-start justify-between mb-4">
-                          <div>
-                            <h3 className="text-lg font-bold text-gray-900">{campaign.title}</h3>
-                            <div className="flex items-center mt-1 space-x-3 text-sm">
-                              <span className="flex items-center text-gray-600">
-                                <PlatformIcon className="h-4 w-4 mr-1" />
-                                {campaign.platform}
-                              </span>
-                              <span className="flex items-center text-gray-600">
-                                <FormatIcon className="h-4 w-4 mr-1" />
-                                {campaign.format}
-                              </span>
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-3 mb-2">
+                              <div className="p-1.5 bg-purple-100 rounded">
+                                <PlatformIcon className="h-3.5 w-3.5 text-purple-600" />
+                              </div>
+                              <div className="p-1.5 bg-gray-100 rounded">
+                                <FormatIcon className="h-3.5 w-3.5 text-gray-600" />
+                              </div>
                             </div>
+                            <h3 className="font-medium text-gray-900">{campaign.title}</h3>
+                            <p className="text-xs text-gray-500 mt-1">{campaign.platform} • {campaign.format}</p>
                           </div>
-                          <span className="px-3 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded-full">
+                          <span className="px-2.5 py-1 bg-purple-50 text-purple-700 text-xs font-medium rounded-md">
                             {campaign.targetSegment}
                           </span>
                         </div>
@@ -723,25 +841,30 @@ const ResultsPage: React.FC = () => {
           {activeTab === 'assets' && (
             <div className="space-y-6 animate-fade-in">
               {/* Download Options */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
-                <h2 className="text-xl font-bold text-gray-900 mb-6">Download Options</h2>
+              <div className="bg-white rounded-lg border border-gray-200 p-8">
+                <div className="flex items-center mb-6">
+                  <div className="p-1.5 bg-green-100 rounded-lg mr-3">
+                    <ArrowDownTrayIcon className="h-4 w-4 text-green-600" />
+                  </div>
+                  <h2 className="text-lg font-semibold text-gray-900">Export Options</h2>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <button
                     onClick={handleDownloadStrategy}
-                    className="p-6 border border-gray-200 rounded-xl hover:border-gray-300 hover:shadow-sm transition-all text-left group"
+                    className="group p-6 bg-gray-50 rounded-lg hover:bg-green-50 transition-all text-left"
                   >
                     <div className="flex items-start">
-                      <div className="p-3 bg-gray-100 rounded-lg mr-4 group-hover:bg-gray-200 transition-all">
-                        <DocumentDuplicateIcon className="h-6 w-6 text-gray-700" />
+                      <div className="p-2 bg-white rounded-lg mr-4 border border-gray-200 group-hover:border-green-200">
+                        <DocumentDuplicateIcon className="h-5 w-5 text-green-600" />
                       </div>
                       <div>
-                        <h3 className="font-semibold text-gray-900 mb-1">Brand Strategy PDF</h3>
-                        <p className="text-sm text-gray-600">Complete strategy document with all positioning, messaging, and target segments</p>
+                        <h3 className="font-medium text-gray-900 mb-1">Brand Strategy PDF</h3>
+                        <p className="text-xs text-gray-600">Complete positioning & messaging guide</p>
                       </div>
                     </div>
                   </button>
                   
-                  <button className="p-6 border border-gray-200 rounded-xl hover:border-gray-300 hover:shadow-sm transition-all text-left group">
+                  <button className="group p-6 bg-gray-50 rounded-lg hover:bg-green-50 transition-all text-left">
                     <div className="flex items-start">
                       <div className="p-3 bg-gray-100 rounded-lg mr-4 group-hover:bg-gray-200 transition-all">
                         <PhotoIcon className="h-6 w-6 text-gray-700" />

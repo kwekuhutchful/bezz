@@ -27,7 +27,7 @@ export interface BrandBrief {
   targetAudience: string;
   language: 'en' | 'fr';
   additionalInfo?: string;
-  status: 'processing' | 'completed' | 'failed';
+  status: 'processing' | 'completed' | 'failed' | 'strategy_completed';
   createdAt: string;
   updatedAt: string;
   results?: BrandResults;
