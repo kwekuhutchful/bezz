@@ -16,7 +16,8 @@ import {
   ArrowRightIcon,
   ChartBarIcon,
   UserGroupIcon,
-  RocketLaunchIcon
+  RocketLaunchIcon,
+  ArrowsUpDownIcon
 } from '@heroicons/react/24/outline';
 import { StarIcon } from '@heroicons/react/24/solid';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
@@ -27,10 +28,25 @@ const DashboardPage: React.FC = () => {
   const [briefs, setBriefs] = useState<BrandBrief[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'processing' | 'completed' | 'failed'>('all');
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'name'>('newest');
+  const [expandedBriefs, setExpandedBriefs] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetchBriefs();
   }, []);
+
+  // Separate effect for polling processing briefs
+  useEffect(() => {
+    const hasProcessingBriefs = briefs.some(brief => brief.status === 'processing');
+    
+    if (hasProcessingBriefs) {
+      const interval = setInterval(() => {
+        fetchBriefs();
+      }, 5000); // Poll every 5 seconds when there are processing briefs
+
+      return () => clearInterval(interval);
+    }
+  }, [briefs]);
 
   const fetchBriefs = async () => {
     try {
@@ -87,9 +103,32 @@ const DashboardPage: React.FC = () => {
     });
   };
 
-  const filteredBriefs = briefs.filter(brief => 
-    selectedFilter === 'all' || brief.status === selectedFilter
-  );
+  const toggleBriefExpanded = (briefId: string) => {
+    setExpandedBriefs(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(briefId)) {
+        newSet.delete(briefId);
+      } else {
+        newSet.add(briefId);
+      }
+      return newSet;
+    });
+  };
+
+  const filteredBriefs = briefs
+    .filter(brief => selectedFilter === 'all' || brief.status === selectedFilter)
+    .sort((a, b) => {
+      switch (sortBy) {
+        case 'newest':
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        case 'oldest':
+          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        case 'name':
+          return a.companyName.localeCompare(b.companyName);
+        default:
+          return 0;
+      }
+    });
 
   if (loading) {
     return (
@@ -241,28 +280,44 @@ const DashboardPage: React.FC = () => {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <h2 className="text-xl font-semibold text-gray-900">Your Brand Portfolio</h2>
             
-            {/* Filter Tabs */}
-            <div className="flex items-center bg-gray-100 rounded-lg p-1">
-              {(['all', 'processing', 'completed', 'failed'] as const).map((filter) => (
-                <button
-                  key={filter}
-                  onClick={() => setSelectedFilter(filter)}
-                  className={`
-                    px-4 py-2 text-sm font-medium rounded-md transition-all capitalize
-                    ${selectedFilter === filter 
-                      ? 'bg-white text-gray-900 shadow-sm' 
-                      : 'text-gray-600 hover:text-gray-900'
-                    }
-                  `}
+            <div className="flex items-center gap-3">
+              {/* Filter Tabs */}
+              <div className="flex items-center bg-gray-100 rounded-lg p-1">
+                {(['all', 'processing', 'completed', 'failed'] as const).map((filter) => (
+                  <button
+                    key={filter}
+                    onClick={() => setSelectedFilter(filter)}
+                    className={`
+                      px-4 py-2 text-sm font-medium rounded-md transition-all capitalize
+                      ${selectedFilter === filter 
+                        ? 'bg-white text-gray-900 shadow-sm' 
+                        : 'text-gray-600 hover:text-gray-900'
+                      }
+                    `}
+                  >
+                    {filter === 'all' ? 'All' : filter}
+                    {filter !== 'all' && (
+                      <span className="ml-2 text-xs">
+                        ({briefs.filter(b => b.status === filter).length})
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+
+              {/* Sort Dropdown */}
+              <div className="flex items-center">
+                <ArrowsUpDownIcon className="h-4 w-4 text-gray-400 mr-2" />
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as 'newest' | 'oldest' | 'name')}
+                  className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
-                  {filter === 'all' ? 'All' : filter}
-                  {filter !== 'all' && (
-                    <span className="ml-2 text-xs">
-                      ({briefs.filter(b => b.status === filter).length})
-                    </span>
-                  )}
-                </button>
-              ))}
+                  <option value="newest">Newest First</option>
+                  <option value="oldest">Oldest First</option>
+                  <option value="name">Name (A-Z)</option>
+                </select>
+              </div>
             </div>
           </div>
         </div>
@@ -309,49 +364,73 @@ const DashboardPage: React.FC = () => {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h3 className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
-                            {brief.companyName}
-                          </h3>
-                          <span className={getStatusBadge(brief.status)}>
-                            {brief.status}
-                          </span>
+                        {/* Header Row - Company, Status, Date */}
+                        <div className="flex items-start justify-between mb-3">
+                          <div>
+                            <h3 className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors mb-1">
+                              {brief.companyName}
+                            </h3>
+                            <div className="flex items-center gap-3">
+                              <span className={getStatusBadge(brief.status)}>
+                                {brief.status}
+                              </span>
+                              <span className="text-sm text-gray-500">
+                                {formatDate(brief.createdAt)}
+                              </span>
+                            </div>
+                          </div>
                         </div>
                         
+                        {/* Meta Information */}
                         <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 mb-3">
                           <span className="flex items-center">
                             <ChartBarIcon className="h-4 w-4 mr-1 text-gray-400" />
                             {brief.sector}
                           </span>
                           <span className="flex items-center">
-                            <UserGroupIcon className="h-4 w-4 mr-1 text-gray-400" />
-                            {brief.targetAudience}
-                          </span>
-                          <span className="flex items-center">
                             <SparklesIcon className="h-4 w-4 mr-1 text-gray-400" />
                             {brief.tone}
                           </span>
                           <span className="flex items-center">
-                            <CalendarDaysIcon className="h-4 w-4 mr-1 text-gray-400" />
-                            {formatDate(brief.createdAt)}
+                            <UserGroupIcon className="h-4 w-4 mr-1 text-gray-400" />
+                            Target: {brief.targetAudience.length > 80 ? brief.targetAudience.substring(0, 80) + '...' : brief.targetAudience}
                           </span>
                         </div>
 
+                        {/* Additional Info if exists */}
                         {brief.additionalInfo && (
-                          <p className="text-sm text-gray-500 line-clamp-2">
-                            {brief.additionalInfo}
-                          </p>
+                          <div className="relative">
+                            <p className={`text-sm text-gray-500 ${!expandedBriefs.has(brief.id) ? 'line-clamp-2' : ''}`}>
+                              {brief.additionalInfo}
+                            </p>
+                            {/* Only show "See more" if content is actually truncated */}
+                            {(() => {
+                              // Check if text would be truncated (rough estimate: 2 lines ≈ 150 chars)
+                              const isTruncated = brief.additionalInfo.length > 150;
+                              return isTruncated && (
+                                <button
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    toggleBriefExpanded(brief.id);
+                                  }}
+                                  className="text-sm text-blue-600 hover:text-blue-700 font-medium mt-1"
+                                >
+                                  {expandedBriefs.has(brief.id) ? 'See less' : 'See more'}
+                                </button>
+                              );
+                            })()}
+                          </div>
                         )}
                       </div>
                       
                       {/* Actions */}
-                      <div className="flex-shrink-0">
-                        {brief.status === 'completed' ? (
+                      <div className="flex-shrink-0 self-center">
+                        {brief.status === 'completed' || brief.status === 'strategy_completed' ? (
                           <Link
                             to={`/results/${brief.id}`}
                             className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-sm font-medium rounded-lg hover:shadow-md transform hover:scale-105 transition-all"
                           >
-                            View Results
+                            View Brand
                             <ArrowRightIcon className="ml-2 h-4 w-4" />
                           </Link>
                         ) : brief.status === 'processing' ? (

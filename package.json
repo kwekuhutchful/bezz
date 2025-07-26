@@ -8,10 +8,14 @@
     "backend"
   ],
   "scripts": {
-    "dev": "docker-compose up --build",
+    "dev": "./start-dev.sh both",
+    "dev:backend": "./start-backend.sh",
+    "dev:frontend": "./start-frontend.sh",
+    "dev:docker": "docker-compose up --build",
     "build": "npm run build --workspaces",
     "test": "npm run test --workspaces",
-    "clean": "npm run clean --workspaces && docker-compose down -v"
+    "clean": "npm run clean --workspaces && docker-compose down -v",
+    "setup": "./setup-env.sh"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

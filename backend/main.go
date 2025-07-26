@@ -85,6 +85,7 @@ func main() {
 			briefs.POST("", handlerContainer.BrandBrief.Create)
 			briefs.GET("", handlerContainer.BrandBrief.List)
 			briefs.GET("/:id", handlerContainer.BrandBrief.GetByID)
+			briefs.POST("/:id/refresh-urls", handlerContainer.BrandBrief.RefreshImageURLs)
 			briefs.DELETE("/:id", handlerContainer.BrandBrief.Delete)
 		}
 

@@ -1,11 +1,18 @@
 package services
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
+	"net/http"
 	"strings"
+	"sync"
+	"time"
+
+	"cloud.google.com/go/storage"
 
 	"github.com/sashabaranov/go-openai"
 
@@ -15,13 +22,17 @@ import (
 
 // AIService handles AI-related operations
 type AIService struct {
-	client *openai.Client
+	client        *openai.Client
+	storageClient *storage.Client
+	bucketName    string
 }
 
 // NewAIService creates a new AI service
-func NewAIService(client *openai.Client) *AIService {
+func NewAIService(client *openai.Client, storageClient *storage.Client, bucketName string) *AIService {
 	return &AIService{
-		client: client,
+		client:        client,
+		storageClient: storageClient,
+		bucketName:    bucketName,
 	}
 }
 
@@ -441,4 +452,251 @@ func (s *AIService) ModerateContent(ctx context.Context, content string) (bool, 
 	}
 
 	return !resp.Results[0].Flagged, nil
+}
+
+// GenerateAds calls Creative-Director-GPT to generate ad specifications
+func (s *AIService) GenerateAds(ctx context.Context, strategy *models.BrandStrategy) (*models.CreativeDirectorGPTResponse, error) {
+	log.Printf("🎨 AI PIPELINE: Starting Creative-Director-GPT for ad generation")
+
+	// Convert strategy to JSON string for the prompt
+	strategyJSON, err := json.Marshal(strategy)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal strategy: %w", err)
+	}
+
+	prompt := fmt.Sprintf(prompts.CreativeDirectorGPTPrompt, string(strategyJSON))
+
+	resp, err := s.client.CreateChatCompletion(ctx, openai.ChatCompletionRequest{
+		Model: openai.GPT4,
+		Messages: []openai.ChatCompletionMessage{
+			{
+				Role:    openai.ChatMessageRoleSystem,
+				Content: "You are Creative-Director-GPT, an expert at creating compelling ad copy and visual concepts. Always respond with valid JSON only.",
+			},
+			{
+				Role:    openai.ChatMessageRoleUser,
+				Content: prompt,
+			},
+		},
+		Temperature: 0.7,
+		MaxTokens:   2000,
+	})
+
+	if err != nil {
+		log.Printf("❌ AI PIPELINE: Creative-Director-GPT API call failed: %v", err)
+		return nil, fmt.Errorf("Creative-Director-GPT API call failed: %w", err)
+	}
+
+	if len(resp.Choices) == 0 {
+		log.Printf("❌ AI PIPELINE: No response from Creative-Director-GPT")
+		return nil, fmt.Errorf("no response from Creative-Director-GPT")
+	}
+
+	content := strings.TrimSpace(resp.Choices[0].Message.Content)
+	log.Printf("🎨 AI PIPELINE: Creative-Director-GPT raw response: %s", content)
+
+	var response models.CreativeDirectorGPTResponse
+	if err := json.Unmarshal([]byte(content), &response); err != nil {
+		log.Printf("❌ AI PIPELINE: Failed to parse Creative-Director-GPT JSON: %v", err)
+		return nil, fmt.Errorf("failed to parse Creative-Director-GPT response: %w", err)
+	}
+
+	log.Printf("✅ AI PIPELINE: Generated %d ad specifications", len(response.Ads))
+	return &response, nil
+}
+
+// RenderImages takes AdSpecs and returns AdCampaigns with image URLs
+func (s *AIService) RenderImages(ctx context.Context, adSpecs []models.AdSpec, companyName string) ([]models.AdCampaign, error) {
+	log.Printf("🖼️ AI PIPELINE: Starting DALL-E 3 image generation for %d ads", len(adSpecs))
+
+	var wg sync.WaitGroup
+	results := make([]models.AdCampaign, len(adSpecs))
+	errors := make([]error, len(adSpecs))
+
+	// Generate images concurrently
+	for i, spec := range adSpecs {
+		wg.Add(1)
+		go func(index int, adSpec models.AdSpec) {
+			defer wg.Done()
+
+			campaign, err := s.generateSingleAd(ctx, adSpec, companyName)
+			if err != nil {
+				log.Printf("❌ AI PIPELINE: Failed to generate ad %d: %v", adSpec.ID, err)
+				errors[index] = err
+				// Create a campaign without image on failure
+				campaign = &models.AdCampaign{
+					ID:            fmt.Sprintf("ad_%d_%d", adSpec.ID, time.Now().Unix()),
+					Title:         fmt.Sprintf("Ad Campaign %d", adSpec.ID),
+					Format:        "social",
+					Platform:      "facebook",
+					TargetSegment: "Primary Audience",
+					Copy: models.AdCopy{
+						Headline: adSpec.Headline,
+						Body:     adSpec.Body,
+						CTA:      "Learn More",
+					},
+					ImagePrompt: adSpec.DallePrompt,
+					Objectives:  []string{"Brand Awareness", "Engagement"},
+				}
+			}
+			results[index] = *campaign
+		}(i, spec)
+	}
+
+	wg.Wait()
+
+	// Check for critical errors (if all failed)
+	successCount := 0
+	for _, err := range errors {
+		if err == nil {
+			successCount++
+		}
+	}
+
+	log.Printf("🖼️ AI PIPELINE: Generated %d/%d images successfully", successCount, len(adSpecs))
+
+	if successCount == 0 {
+		return nil, fmt.Errorf("all image generation attempts failed")
+	}
+
+	return results, nil
+}
+
+// generateSingleAd generates a single ad with image
+func (s *AIService) generateSingleAd(ctx context.Context, spec models.AdSpec, companyName string) (*models.AdCampaign, error) {
+	const maxRetries = 2
+	var lastErr error
+
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		if attempt > 0 {
+			log.Printf("🔄 AI PIPELINE: Retrying image generation for ad %d (attempt %d/%d)", spec.ID, attempt+1, maxRetries+1)
+			time.Sleep(time.Duration(attempt) * 2 * time.Second) // Exponential backoff
+		}
+
+		// Generate image with DALL-E 3
+		imageURL, err := s.generateImage(ctx, spec.DallePrompt)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+
+		// Upload to GCS
+		objectName := fmt.Sprintf("ads/%s_ad_%d_%d", companyName, spec.ID, time.Now().Unix())
+		gcsURL, err := s.uploadImageToGCS(ctx, imageURL, objectName)
+		if err != nil {
+			log.Printf("⚠️ AI PIPELINE: GCS upload failed, using direct URL: %v", err)
+			gcsURL = imageURL // Fallback to direct URL
+			objectName = ""   // Clear object name if upload failed
+		}
+
+		// Create AdCampaign
+		campaign := &models.AdCampaign{
+			ID:            fmt.Sprintf("ad_%d_%d", spec.ID, time.Now().Unix()),
+			Title:         fmt.Sprintf("Ad Campaign %d", spec.ID),
+			Format:        "social",
+			Platform:      "facebook",
+			TargetSegment: "Primary Audience",
+			Copy: models.AdCopy{
+				Headline: spec.Headline,
+				Body:     spec.Body,
+				CTA:      "Learn More",
+			},
+			ImagePrompt: spec.DallePrompt,
+			ImageURL:    gcsURL,
+			ObjectName:  objectName, // Store the actual object name
+			Objectives:  []string{"Brand Awareness", "Engagement"},
+		}
+
+		log.Printf("✅ AI PIPELINE: Successfully generated ad %d with image", spec.ID)
+		return campaign, nil
+	}
+
+	return nil, fmt.Errorf("failed to generate ad after %d attempts: %w", maxRetries+1, lastErr)
+}
+
+// generateImage generates an image using DALL-E 3
+func (s *AIService) generateImage(ctx context.Context, prompt string) (string, error) {
+	log.Printf("🎨 AI PIPELINE: Generating image with prompt: %.100s...", prompt)
+
+	resp, err := s.client.CreateImage(ctx, openai.ImageRequest{
+		Prompt:         prompt,
+		Model:          openai.CreateImageModelDallE3,
+		N:              1,
+		Size:           openai.CreateImageSize1024x1024,
+		Quality:        openai.CreateImageQualityStandard,
+		ResponseFormat: openai.CreateImageResponseFormatURL,
+	})
+
+	if err != nil {
+		log.Printf("❌ AI PIPELINE: DALL-E 3 API call failed: %v", err)
+		return "", fmt.Errorf("DALL-E 3 API call failed: %w", err)
+	}
+
+	if len(resp.Data) == 0 {
+		return "", fmt.Errorf("no image generated by DALL-E 3")
+	}
+
+	imageURL := resp.Data[0].URL
+	log.Printf("✅ AI PIPELINE: Image generated successfully: %s", imageURL)
+	return imageURL, nil
+}
+
+// uploadImageToGCS uploads an image to Google Cloud Storage and returns a signed URL
+func (s *AIService) uploadImageToGCS(ctx context.Context, imageURL, objectName string) (string, error) {
+	log.Printf("☁️ AI PIPELINE: Uploading image to GCS: %s", objectName)
+
+	// Download image from URL
+	resp, err := http.Get(imageURL)
+	if err != nil {
+		return "", fmt.Errorf("failed to download image: %w", err)
+	}
+	defer resp.Body.Close()
+
+	imageData, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to read image data: %w", err)
+	}
+
+	// Upload to GCS
+	bucket := s.storageClient.Bucket(s.bucketName)
+	obj := bucket.Object(objectName + ".png")
+
+	writer := obj.NewWriter(ctx)
+	writer.ContentType = "image/png"
+
+	if _, err := io.Copy(writer, bytes.NewReader(imageData)); err != nil {
+		writer.Close()
+		return "", fmt.Errorf("failed to write to GCS: %w", err)
+	}
+
+	if err := writer.Close(); err != nil {
+		return "", fmt.Errorf("failed to close GCS writer: %w", err)
+	}
+
+	// Generate signed URL (valid for 24 hours)
+	signedURL, err := s.GenerateSignedURL(ctx, objectName+".png")
+	if err != nil {
+		log.Printf("⚠️ AI PIPELINE: Failed to generate signed URL, using fallback: %v", err)
+		return imageURL, err // Fallback to direct OpenAI URL
+	}
+
+	log.Printf("✅ AI PIPELINE: Image uploaded to GCS with signed URL")
+	return signedURL, nil
+}
+
+// GenerateSignedURL creates a signed URL for private GCS objects
+func (s *AIService) GenerateSignedURL(ctx context.Context, objectName string) (string, error) {
+	opts := &storage.SignedURLOptions{
+		Scheme:  storage.SigningSchemeV4,
+		Method:  "GET",
+		Expires: time.Now().Add(24 * time.Hour), // Valid for 24 hours
+	}
+
+	bucket := s.storageClient.Bucket(s.bucketName)
+	signedURL, err := bucket.SignedURL(objectName, opts)
+	if err != nil {
+		return "", fmt.Errorf("failed to generate signed URL: %w", err)
+	}
+
+	return signedURL, nil
 }

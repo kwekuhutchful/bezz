@@ -46,7 +46,13 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    // Handle network errors
+    if (!error.response && error.code === 'ECONNABORTED') {
+      toast.error('Request timeout. Please try again.')
+    } else if (!error.response) {
+      console.error('Network error:', error)
+      toast.error('Network error. Please check your connection.')
+    } else if (error.response?.status === 401) {
       // Token expired or invalid
       setAuthToken(null)
       toast.error('Session expired. Please log in again.')
@@ -78,6 +84,7 @@ export const endpoints = {
     create: '/api/briefs',
     list: '/api/briefs',
     get: (id: string) => `/api/briefs/${id}`,
+    refreshUrls: (id: string) => `/api/briefs/${id}/refresh-urls`,
     delete: (id: string) => `/api/briefs/${id}`,
   },
   // Payments
@@ -112,6 +119,14 @@ export const authAPI = {
 
   resetPassword: async (email: string) => {
     const response = await api.post(endpoints.auth.resetPassword, { email })
+    return response.data
+  },
+}
+
+// Brief API functions
+export const briefAPI = {
+  refreshImageURLs: async (briefId: string) => {
+    const response = await api.post(endpoints.briefs.refreshUrls(briefId))
     return response.data
   },
 }

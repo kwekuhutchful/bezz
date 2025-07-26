@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import api, { endpoints } from '@/lib/api';
+import api, { endpoints, briefAPI } from '@/lib/api';
 import { BrandBrief } from '@/types';
 import { 
   ClockIcon,
@@ -22,12 +22,15 @@ import {
   HeartIcon,
   StarIcon,
   ArrowTopRightOnSquareIcon,
+  ArrowPathIcon,
   PhotoIcon,
   VideoCameraIcon,
   NewspaperIcon,
   DevicePhoneMobileIcon,
   ComputerDesktopIcon,
   BuildingOfficeIcon,
+  ChevronUpIcon,
+  ChevronDownIcon,
   TagIcon,
   ChevronRightIcon,
   FolderIcon,
@@ -47,6 +50,8 @@ const ResultsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [selectedCampaign, setSelectedCampaign] = useState<number | null>(null);
   const [expandedSegment, setExpandedSegment] = useState<number | null>(null);
+  const [previewModal, setPreviewModal] = useState<{isOpen: boolean, campaign: any} | null>(null);
+  const [platformFilter, setPlatformFilter] = useState<string>('');
 
   useEffect(() => {
     if (id) {
@@ -74,14 +79,57 @@ const ResultsPage: React.FC = () => {
     }
   };
 
+  const refreshImageURLs = async () => {
+    if (!brief?.id) return;
+    
+    try {
+      toast.loading('Refreshing image URLs...', { id: 'refresh-images' });
+      const response = await briefAPI.refreshImageURLs(brief.id);
+      setBrief(response.data);
+      toast.success('Image URLs refreshed successfully!', { id: 'refresh-images' });
+    } catch (error) {
+      toast.error('Failed to refresh image URLs', { id: 'refresh-images' });
+    }
+  };
+
   const handleExportCanva = (campaign: any) => {
-    toast.success('Exporting to Canva...');
-    // TODO: Implement Canva export
+    // Create Canva-compatible data structure
+    const canvaData = {
+      title: campaign.title,
+      headline: campaign.copy.headline,
+      body: campaign.copy.body,
+      cta: campaign.copy.cta,
+      image: campaign.imageUrl,
+      platform: campaign.platform,
+      format: campaign.format
+    };
+    
+    // For now, copy to clipboard (would normally integrate with Canva API)
+    navigator.clipboard.writeText(JSON.stringify(canvaData, null, 2));
+    toast.success('Campaign data copied to clipboard - Ready for Canva integration!');
+    // TODO: Implement actual Canva API integration
   };
 
   const handleExportMeta = (campaign: any) => {
-    toast.success('Exporting to Meta Ads Manager...');
-    // TODO: Implement Meta Ads export
+    // Create Meta Ads compatible structure
+    const metaData = {
+      campaign_name: campaign.title,
+      ad_creative: {
+        headline: campaign.copy.headline,
+        body: campaign.copy.body,
+        call_to_action: campaign.copy.cta,
+        image_url: campaign.imageUrl
+      },
+      targeting: {
+        audience: campaign.targetSegment,
+        platform: campaign.platform
+      }
+    };
+    
+    // For now, copy to clipboard (would normally use Meta Marketing API)
+    navigator.clipboard.writeText(JSON.stringify(metaData, null, 2));
+    toast.success('Campaign data copied to clipboard - Ready for Meta Ads Manager!');
+    // TODO: Implement actual Meta Marketing API integration
   };
 
   const handleShare = () => {
@@ -90,8 +138,68 @@ const ResultsPage: React.FC = () => {
   };
 
   const handleDownloadStrategy = () => {
-    toast.success('Downloading brand strategy PDF...');
-    // TODO: Implement PDF download
+    if (!brief?.results?.strategy) {
+      toast.error('Strategy not available for download');
+      return;
+    }
+    
+    // Create downloadable content
+    const strategyContent = `
+BRAND STRATEGY REPORT
+Company: ${brief.companyName}
+Generated: ${new Date().toLocaleDateString()}
+
+POSITIONING STATEMENT
+${brief.results.strategy.positioning || 'Not available'}
+
+VALUE PROPOSITION
+${brief.results.strategy.valueProposition || 'Not available'}
+
+BRAND PILLARS
+${brief.results.strategy.brandPillars?.join('\n• ') || 'Not available'}
+
+MESSAGING FRAMEWORK
+Primary Message: ${brief.results.strategy.messagingFramework?.primaryMessage || 'Not available'}
+
+Supporting Messages:
+${brief.results.strategy.messagingFramework?.supportingMessages?.map(msg => `• ${msg}`).join('\n') || 'Not available'}
+
+TARGET SEGMENTS
+${brief.results.strategy.targetSegments?.map((segment, i) => 
+  `${i + 1}. ${segment.name}
+     Demographics: ${segment.demographics}
+     Psychographics: ${segment.psychographics}
+     Pain Points: ${segment.painPoints?.join(', ')}
+     Preferred Channels: ${segment.preferredChannels?.join(', ')}`
+).join('\n\n') || 'Not available'}
+    `;
+    
+    // Create and download file
+    const blob = new Blob([strategyContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${brief.companyName.replace(/[^a-z0-9]/gi, '_')}_brand_strategy.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    toast.success('Brand strategy downloaded!');
+  };
+
+  const handlePreviewCampaign = (campaign: any) => {
+    setPreviewModal({ isOpen: true, campaign });
+  };
+
+  const handleToggleCampaignDetails = (index: number) => {
+    setSelectedCampaign(selectedCampaign === index ? null : index);
+  };
+
+  const handleExportAll = () => {
+    const campaigns = filteredCampaigns;
+    toast.success(`Exporting ${campaigns.length} campaigns...`);
+    // TODO: Implement bulk export
   };
 
   const platformIcons: Record<string, any> = {
@@ -108,6 +216,23 @@ const ResultsPage: React.FC = () => {
     carousel: DocumentDuplicateIcon,
     story: DevicePhoneMobileIcon
   };
+
+  // Filter campaigns by platform
+  const filteredCampaigns = brief?.results?.ads?.filter(campaign => 
+    !platformFilter || campaign.platform.toLowerCase() === platformFilter.toLowerCase()
+  ) || [];
+
+  // Handle ESC key for modal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && previewModal?.isOpen) {
+        setPreviewModal(null);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [previewModal?.isOpen]);
 
   if (loading) {
     return (
@@ -352,28 +477,7 @@ const ResultsPage: React.FC = () => {
         </div>
       )}
 
-      {/* Error Status */}
-      {brief.status === 'failed' && (
-        <div className={`mb-8 p-6 rounded-xl border ${statusConfig?.borderColor} ${statusConfig?.bgColor}`}>
-          <div className="flex items-start">
-            <ExclamationCircleIcon className="h-6 w-6 text-red-600 mr-3 mt-0.5" />
-            <div>
-              <h3 className="text-lg font-semibold text-red-900">
-                {statusConfig?.title}
-              </h3>
-              <p className="mt-1 text-red-700">
-                {statusConfig?.message}
-              </p>
-              <button
-                onClick={() => navigate('/brief')}
-                className="mt-4 inline-flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all"
-              >
-                Create New Brief
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+
 
       {/* Simplified Tab Navigation */}
       {brief.status === 'completed' && brief.results && (
@@ -632,7 +736,7 @@ const ResultsPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Target Segments - Expandable cards with indigo accent */}
+              {/* Target Segments - Always-expanded cards with indigo accent */}
               <div className="bg-white rounded-lg border border-gray-200 p-8">
                 <div className="flex items-center mb-6">
                   <div className="p-1.5 bg-indigo-100 rounded-lg mr-3">
@@ -640,60 +744,56 @@ const ResultsPage: React.FC = () => {
                   </div>
                   <h2 className="text-lg font-semibold text-gray-900">Target Segments</h2>
                 </div>
-                <div className="space-y-4">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   {safeResults.strategy.targetSegments.map((segment, index) => (
                     <div 
                       key={index} 
-                      className="border border-gray-200 rounded-lg overflow-hidden hover:border-indigo-200 transition-all"
+                      className="bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-200 rounded-lg p-6 hover:shadow-lg transition-all"
                     >
-                      <button
-                        onClick={() => setExpandedSegment(expandedSegment === index ? null : index)}
-                        className="w-full p-6 text-left flex items-center justify-between hover:bg-gray-50 transition-colors"
-                      >
-                        <div className="flex items-center">
-                          <div className="w-2 h-2 bg-indigo-400 rounded-full mr-3"></div>
-                          <h3 className="font-medium text-gray-900">{segment.name}</h3>
+                      {/* Segment Header */}
+                      <div className="flex items-center mb-4">
+                        <div className="w-3 h-3 bg-indigo-500 rounded-full mr-3"></div>
+                        <h3 className="text-lg font-semibold text-gray-900">{segment.name}</h3>
+                      </div>
 
-                        </div>
-                        <ChevronRightIcon className={`h-5 w-5 text-gray-400 transition-transform ${expandedSegment === index ? 'rotate-90' : ''}`} />
-                      </button>
-                      {expandedSegment === index && (
-                        <div className="px-6 pb-6 space-y-4 animate-slide-up">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Demographics</p>
-                              <p className="text-sm text-gray-700">{segment.demographics}</p>
-                            </div>
-                            <div>
-                              <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Psychographics</p>
-                              <p className="text-sm text-gray-700">{segment.psychographics}</p>
-                            </div>
+                      {/* Segment Details */}
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-1 gap-4">
+                          <div className="bg-white/80 rounded-lg p-4 border border-indigo-100">
+                            <p className="text-xs font-medium text-indigo-600 uppercase tracking-wider mb-2">Demographics</p>
+                            <p className="text-sm text-gray-800 leading-relaxed">{segment.demographics}</p>
                           </div>
-                          {segment.painPoints && segment.painPoints.length > 0 && (
-                            <div>
-                              <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Pain Points</p>
-                              <div className="space-y-1">
-                                {segment.painPoints.map((pain, idx) => (
-                                  <div key={idx} className="flex items-start">
-                                    <div className="w-1.5 h-1.5 bg-red-400 rounded-full mt-1.5 mr-2 flex-shrink-0"></div>
-                                    <p className="text-sm text-gray-700">{pain}</p>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                          <div>
-                            <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Preferred Channels</p>
-                            <div className="flex flex-wrap gap-2">
-                              {segment.preferredChannels.map((channel, idx) => (
-                                <span key={idx} className="px-2.5 py-1 bg-indigo-50 text-indigo-700 text-xs font-medium rounded-md">
-                                  {channel}
-                                </span>
+                          <div className="bg-white/80 rounded-lg p-4 border border-indigo-100">
+                            <p className="text-xs font-medium text-indigo-600 uppercase tracking-wider mb-2">Psychographics</p>
+                            <p className="text-sm text-gray-800 leading-relaxed">{segment.psychographics}</p>
+                          </div>
+                        </div>
+
+                        {segment.painPoints && segment.painPoints.length > 0 && (
+                          <div className="bg-white/80 rounded-lg p-4 border border-indigo-100">
+                            <p className="text-xs font-medium text-indigo-600 uppercase tracking-wider mb-3">Pain Points</p>
+                            <div className="space-y-2">
+                              {segment.painPoints.map((pain, idx) => (
+                                <div key={idx} className="flex items-start">
+                                  <div className="w-1.5 h-1.5 bg-red-400 rounded-full mt-2 mr-2 flex-shrink-0"></div>
+                                  <p className="text-sm text-gray-800">{pain}</p>
+                                </div>
                               ))}
                             </div>
                           </div>
+                        )}
+
+                        <div className="bg-white/80 rounded-lg p-4 border border-indigo-100">
+                          <p className="text-xs font-medium text-indigo-600 uppercase tracking-wider mb-3">Preferred Channels</p>
+                          <div className="flex flex-wrap gap-2">
+                            {segment.preferredChannels.map((channel, idx) => (
+                              <span key={idx} className="px-3 py-1.5 bg-indigo-100 text-indigo-700 text-xs font-medium rounded-full border border-indigo-200">
+                                {channel}
+                              </span>
+                            ))}
+                          </div>
                         </div>
-                      )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -709,34 +809,48 @@ const ResultsPage: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <h2 className="text-lg font-semibold text-gray-900">Ad Campaigns</h2>
-                    <p className="text-sm text-gray-600 mt-1">{safeResults.ads.length} ready-to-use campaigns generated</p>
+                    <p className="text-sm text-gray-600 mt-1">{filteredCampaigns.length} ready-to-use campaigns {platformFilter ? `for ${platformFilter}` : 'generated'}</p>
                   </div>
                   <div className="flex items-center space-x-3">
-                    <select className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                    <select 
+                      value={platformFilter}
+                      onChange={(e) => setPlatformFilter(e.target.value)}
+                      className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                    >
                       <option value="">All Platforms</option>
                       <option value="facebook">Facebook</option>
                       <option value="instagram">Instagram</option>
                       <option value="linkedin">LinkedIn</option>
                     </select>
-                    <button className="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg text-sm font-medium hover:bg-purple-200 transition-colors">
-                      Export All
+                    <button 
+                      onClick={refreshImageURLs}
+                      className="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-200 transition-colors flex items-center gap-2"
+                    >
+                      <ArrowPathIcon className="h-4 w-4" />
+                      Refresh Images
+                    </button>
+                    <button 
+                      onClick={handleExportAll}
+                      className="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg text-sm font-medium hover:bg-purple-200 transition-colors"
+                    >
+                      Export All ({filteredCampaigns.length})
                     </button>
                   </div>
                 </div>
               </div>
 
-              {/* Campaign List - Cleaner layout */}
-              <div className="space-y-4">
-                {safeResults.ads.map((campaign, index) => {
+              {/* Campaign Cards - Grid layout */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                {filteredCampaigns.map((campaign, index) => {
                   const PlatformIcon = platformIcons[campaign.platform.toLowerCase()] || GlobeAltIcon;
                   const FormatIcon = formatIcons[campaign.format.toLowerCase()] || PhotoIcon;
 
                   return (
                     <div 
                       key={index} 
-                      className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:border-purple-200 transition-all"
+                      className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:border-purple-200 hover:shadow-lg transition-all group"
                     >
-                      <div className="p-6">
+                      <div className="p-4">
                         {/* Campaign Header */}
                         <div className="flex items-start justify-between mb-4">
                           <div className="flex-1">
@@ -758,27 +872,30 @@ const ResultsPage: React.FC = () => {
 
                         {/* Campaign Visual */}
                         {campaign.imageUrl ? (
-                          <div className="relative mb-4 rounded-lg overflow-hidden group">
+                          <div className="relative mb-4 rounded-lg overflow-hidden">
                             <img
                               src={campaign.imageUrl}
                               alt={campaign.title}
-                              className="w-full h-64 object-cover"
+                              className="w-full h-48 object-cover"
                             />
                             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all flex items-center justify-center">
-                              <button className="opacity-0 group-hover:opacity-100 transition-all bg-white/90 backdrop-blur-sm px-4 py-2 rounded-lg font-medium text-gray-900 flex items-center">
-                                <EyeIcon className="h-4 w-4 mr-2" />
+                              <button 
+                                onClick={() => handlePreviewCampaign(campaign)}
+                                className="opacity-0 group-hover:opacity-100 transition-all bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-lg font-medium text-gray-900 flex items-center hover:bg-white text-sm"
+                              >
+                                <EyeIcon className="h-4 w-4 mr-1.5" />
                                 Preview
                               </button>
                             </div>
                           </div>
                         ) : (
-                          <div className="mb-4 h-64 bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg flex items-center justify-center">
+                          <div className="mb-4 h-48 bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg flex items-center justify-center">
                             <div className="text-center">
-                              <div className="inline-flex items-center justify-center w-16 h-16 bg-white rounded-full shadow-sm mb-3">
-                                <PhotoIcon className="h-8 w-8 text-gray-400" />
+                              <div className="inline-flex items-center justify-center w-12 h-12 bg-white rounded-full shadow-sm mb-2">
+                                <PhotoIcon className="h-6 w-6 text-gray-400" />
                               </div>
-                              <p className="text-sm text-gray-500">Image generating...</p>
-                              <div className="mt-2">
+                              <p className="text-xs text-gray-500">Image generating...</p>
+                              <div className="mt-1">
                                 <LoadingSpinner size="sm" />
                               </div>
                             </div>
@@ -786,47 +903,65 @@ const ResultsPage: React.FC = () => {
                         )}
 
                         {/* Campaign Copy Preview */}
-                        <div className="space-y-3 mb-4">
-                          <div className="p-4 bg-gray-50 rounded-lg">
-                            <h4 className="text-sm font-medium text-gray-700 mb-1">Headline</h4>
-                            <p className="text-gray-900 font-medium">{campaign.copy.headline}</p>
+                        <div className="space-y-2 mb-4">
+                          <div className="p-3 bg-gray-50 rounded-md">
+                            <h4 className="text-xs font-medium text-gray-600 mb-1">Headline</h4>
+                            <p className="text-sm text-gray-900 font-medium line-clamp-2">{campaign.copy.headline}</p>
                           </div>
                           
                           {selectedCampaign === index && (
                             <>
-                              <div className="p-4 bg-gray-50 rounded-lg animate-fade-in">
-                                <h4 className="text-sm font-medium text-gray-700 mb-1">Body Copy</h4>
-                                <p className="text-gray-700">{campaign.copy.body}</p>
+                              <div className="p-3 bg-gray-50 rounded-md animate-fade-in">
+                                <h4 className="text-xs font-medium text-gray-600 mb-1">Body Copy</h4>
+                                <p className="text-sm text-gray-700">{campaign.copy.body}</p>
                               </div>
-                              <div className="p-4 bg-gray-50 rounded-lg animate-fade-in">
-                                <h4 className="text-sm font-medium text-gray-700 mb-1">Call to Action</h4>
-                                <p className="text-gray-900 font-medium">{campaign.copy.cta}</p>
+                              <div className="p-3 bg-gray-50 rounded-md animate-fade-in">
+                                <h4 className="text-xs font-medium text-gray-600 mb-1">Call to Action</h4>
+                                <p className="text-sm text-gray-900 font-medium">{campaign.copy.cta}</p>
                               </div>
                             </>
                           )}
+                          
+                          {/* Toggle Details Button */}
+                          <button
+                            onClick={() => handleToggleCampaignDetails(index)}
+                            className="w-full py-1.5 text-xs text-purple-600 hover:text-purple-700 font-medium transition-colors flex items-center justify-center"
+                          >
+                            {selectedCampaign === index ? (
+                              <>
+                                <ChevronUpIcon className="h-3.5 w-3.5 mr-1" />
+                                Show Less
+                              </>
+                            ) : (
+                              <>
+                                <ChevronDownIcon className="h-3.5 w-3.5 mr-1" />
+                                Show More
+                              </>
+                            )}
+                          </button>
                         </div>
 
                         {/* Export Actions */}
-                        <div className="flex space-x-3">
+                        <div className="flex space-x-2">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               handleExportCanva(campaign);
                             }}
-                            className="flex-1 inline-flex items-center justify-center px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-all text-sm font-medium"
+                            className="flex-1 inline-flex items-center justify-center px-3 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-all text-xs font-medium"
                           >
-                            <ArrowTopRightOnSquareIcon className="h-4 w-4 mr-2" />
-                            Export to Canva
+                            <ArrowTopRightOnSquareIcon className="h-3.5 w-3.5 mr-1.5" />
+                            Canva
                           </button>
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               handleExportMeta(campaign);
                             }}
-                            className="flex-1 inline-flex items-center justify-center px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-all text-sm font-medium"
+                            className="flex-1 inline-flex items-center justify-center px-3 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-all text-xs font-medium"
                           >
-                            <ArrowTopRightOnSquareIcon className="h-4 w-4 mr-2" />
-                            Meta Ads
+                            <ArrowTopRightOnSquareIcon className="h-3.5 w-3.5 mr-1.5" />
+                            Meta
                           </button>
                         </div>
                       </div>
@@ -919,6 +1054,102 @@ const ResultsPage: React.FC = () => {
             </div>
           )}
         </>
+      )}
+
+      {/* Preview Modal */}
+      {previewModal?.isOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold text-gray-900">Campaign Preview</h2>
+                <button
+                  onClick={() => setPreviewModal(null)}
+                  className="text-gray-500 hover:text-gray-700 transition-colors"
+                >
+                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Campaign Visual */}
+                <div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-4">{previewModal.campaign.title}</h3>
+                  {previewModal.campaign.imageUrl ? (
+                    <img
+                      src={previewModal.campaign.imageUrl}
+                      alt={previewModal.campaign.title}
+                      className="w-full rounded-lg shadow-sm"
+                    />
+                  ) : (
+                    <div className="w-full h-64 bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg flex items-center justify-center">
+                      <div className="text-center">
+                        <PhotoIcon className="h-12 w-12 text-gray-400 mx-auto mb-2" />
+                        <p className="text-sm text-gray-500">Image generating...</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Campaign Details */}
+                <div className="space-y-6">
+                  <div>
+                    <div className="flex items-center space-x-2 mb-3">
+                      <span className="px-3 py-1 bg-purple-50 text-purple-700 text-sm font-medium rounded-full">
+                        {previewModal.campaign.platform}
+                      </span>
+                      <span className="px-3 py-1 bg-gray-100 text-gray-700 text-sm font-medium rounded-full">
+                        {previewModal.campaign.format}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-600 mb-4">Target: {previewModal.campaign.targetSegment}</p>
+                  </div>
+                  
+                  <div className="p-4 bg-gray-50 rounded-lg">
+                    <h4 className="text-sm font-medium text-gray-700 mb-2">Headline</h4>
+                    <p className="text-lg font-semibold text-gray-900">{previewModal.campaign.copy.headline}</p>
+                  </div>
+                  
+                  <div className="p-4 bg-gray-50 rounded-lg">
+                    <h4 className="text-sm font-medium text-gray-700 mb-2">Body Copy</h4>
+                    <p className="text-gray-700">{previewModal.campaign.copy.body}</p>
+                  </div>
+                  
+                  <div className="p-4 bg-gray-50 rounded-lg">
+                    <h4 className="text-sm font-medium text-gray-700 mb-2">Call to Action</h4>
+                    <p className="text-gray-900 font-medium">{previewModal.campaign.copy.cta}</p>
+                  </div>
+                  
+                  {/* Preview Actions */}
+                  <div className="flex space-x-3">
+                    <button
+                      onClick={() => {
+                        handleExportCanva(previewModal.campaign);
+                        setPreviewModal(null);
+                      }}
+                      className="flex-1 inline-flex items-center justify-center px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-all font-medium"
+                    >
+                      <ArrowTopRightOnSquareIcon className="h-4 w-4 mr-2" />
+                      Export to Canva
+                    </button>
+                    <button
+                      onClick={() => {
+                        handleExportMeta(previewModal.campaign);
+                        setPreviewModal(null);
+                      }}
+                      className="flex-1 inline-flex items-center justify-center px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-all font-medium"
+                    >
+                      <ArrowTopRightOnSquareIcon className="h-4 w-4 mr-2" />
+                      Meta Ads
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

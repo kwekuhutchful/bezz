@@ -65,7 +65,8 @@ func NewContainer(cfg *config.Config) (*Container, error) {
 
 	// Create service instances
 	authService := NewAuthService(authClient)
-	aiService := NewAIService(openaiClient)
+	// Initialize AI Service
+	aiService := NewAIService(openaiClient, storageClient, cfg.GCSBucketName)
 	userService := NewUserService(firestoreClient)
 	brandBriefService := NewBrandBriefService(firestoreClient, aiService, storageClient, cfg.GCSBucketName)
 	paymentService := NewPaymentService(cfg.StripeSecretKey, cfg.StripeWebhookSecret)

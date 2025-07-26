@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"cloud.google.com/go/firestore"
@@ -12,6 +13,8 @@ import (
 	"google.golang.org/grpc/status"
 
 	"bezz-backend/internal/models"
+
+	"google.golang.org/api/iterator"
 )
 
 // BrandBriefService handles brand brief operations
@@ -100,9 +103,11 @@ func (s *BrandBriefService) GetBrief(ctx context.Context, briefID string) (*mode
 func (s *BrandBriefService) ListBriefs(ctx context.Context, userID string, limit int) ([]*models.BrandBrief, error) {
 	log.Printf("📚 BRIEF SERVICE: Listing briefs for user %s (limit: %d)", userID, limit)
 
-	// Simplified query without OrderBy to avoid composite index requirement
+	// Query with ordering by creation date (newest first)
+	// Note: This requires a composite index in Firestore (userId + createdAt DESC)
 	query := s.db.Collection("briefs").
 		Where("userId", "==", userID).
+		OrderBy("createdAt", firestore.Desc).
 		Limit(limit)
 
 	log.Printf("🔍 BRIEF SERVICE: Executing Firestore query...")
@@ -169,8 +174,33 @@ func (s *BrandBriefService) processBrief(ctx context.Context, brief *models.Bran
 	log.Printf("💾 AI PIPELINE: Saving strategy to Firestore...")
 	s.updateBriefStatusWithStrategy(ctx, brief.ID, "strategy_completed", strategy)
 
-	// TODO: Continue with ad campaign generation if needed
-	// For now, we mark as completed after strategy generation
+	// Generate ad campaigns
+	log.Printf("🎨 AI PIPELINE: Starting ad campaign generation...")
+	adSpecs, err := s.aiService.GenerateAds(ctx, strategy)
+	if err != nil {
+		log.Printf("❌ AI PIPELINE: Ad generation failed for brief %s: %v", brief.ID, err)
+		s.updateBriefStatus(ctx, brief.ID, "ads_failed")
+		return
+	}
+
+	log.Printf("✅ AI PIPELINE: Generated %d ad specifications", len(adSpecs.Ads))
+
+	// Generate images for ads
+	log.Printf("🖼️ AI PIPELINE: Starting image generation...")
+	ads, err := s.aiService.RenderImages(ctx, adSpecs.Ads, brief.CompanyName)
+	if err != nil {
+		log.Printf("❌ AI PIPELINE: Image generation failed for brief %s: %v", brief.ID, err)
+		s.updateBriefStatus(ctx, brief.ID, "images_failed")
+		return
+	}
+
+	log.Printf("✅ AI PIPELINE: Generated %d complete ads with images", len(ads))
+
+	// Update status with ads
+	log.Printf("💾 AI PIPELINE: Saving ads to Firestore...")
+	s.updateBriefStatusWithAds(ctx, brief.ID, "ads_completed", ads)
+
+	// Mark as completed
 	log.Printf("🎉 AI PIPELINE: Marking brief %s as completed", brief.ID)
 	s.updateBriefStatus(ctx, brief.ID, "completed")
 }
@@ -189,6 +219,20 @@ func (s *BrandBriefService) updateBriefStatusWithStrategy(ctx context.Context, b
 	}
 }
 
+// updateBriefStatusWithAds updates brief with ads data
+func (s *BrandBriefService) updateBriefStatusWithAds(ctx context.Context, briefID, status string, ads []models.AdCampaign) {
+	updates := []firestore.Update{
+		{Path: "status", Value: status},
+		{Path: "results.ads", Value: ads},
+		{Path: "updatedAt", Value: time.Now()},
+	}
+
+	_, err := s.db.Collection("briefs").Doc(briefID).Update(ctx, updates)
+	if err != nil {
+		log.Printf("Failed to update brief %s with ads: %v", briefID, err)
+	}
+}
+
 // updateBriefStatus updates the status of a brief
 func (s *BrandBriefService) updateBriefStatus(ctx context.Context, briefID, status string) {
 	updates := []firestore.Update{
@@ -202,4 +246,111 @@ func (s *BrandBriefService) updateBriefStatus(ctx context.Context, briefID, stat
 // generateID generates a unique ID for documents
 func generateID() string {
 	return fmt.Sprintf("%d", time.Now().UnixNano())
+}
+
+// RefreshImageURLs refreshes expired signed URLs for all campaign images in a brief
+func (s *BrandBriefService) RefreshImageURLs(ctx context.Context, briefID, userID string) (*models.BrandBrief, error) {
+	log.Printf("🔄 REFRESH IMAGE URLS: Starting for brief %s", briefID)
+
+	// Get the brief first
+	brief, err := s.GetBrief(ctx, briefID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Verify ownership
+	if brief.UserID != userID {
+		return nil, fmt.Errorf("access denied")
+	}
+
+	// Check if brief has ads with images
+	if brief.Results == nil || brief.Results.Ads == nil {
+		return brief, nil // No ads to refresh
+	}
+
+	log.Printf("🔄 REFRESH IMAGE URLS: Found %d campaigns to refresh", len(brief.Results.Ads))
+
+	// Refresh signed URLs for each campaign image
+	for i, campaign := range brief.Results.Ads {
+		if campaign.ImageURL == "" {
+			continue
+		}
+
+		// Use stored object name if available, otherwise try to discover it
+		objectName := campaign.ObjectName
+		if objectName == "" {
+			// Backward compatibility: try to discover object name from existing URL
+			discoveredName, err := s.discoverObjectName(ctx, campaign.ImageURL, brief.CompanyName, i)
+			if err != nil {
+				log.Printf("⚠️ REFRESH IMAGE URLS: No object name found for campaign %d, skipping: %v", i, err)
+				continue
+			}
+			objectName = discoveredName
+			log.Printf("🔍 REFRESH IMAGE URLS: Discovered object name for campaign %d: %s", i, objectName)
+		}
+
+		// Generate new signed URL
+		newSignedURL, err := s.aiService.GenerateSignedURL(ctx, objectName+".png")
+		if err != nil {
+			log.Printf("⚠️ REFRESH IMAGE URLS: Failed to refresh URL for campaign %d: %v", i, err)
+			continue // Skip this image, keep the old URL
+		}
+
+		// Update the campaign with new signed URL
+		brief.Results.Ads[i].ImageURL = newSignedURL
+		log.Printf("✅ REFRESH IMAGE URLS: Refreshed URL for campaign %d using object: %s", i, objectName)
+	}
+
+	// Update the brief in Firestore
+	updates := []firestore.Update{
+		{Path: "results.ads", Value: brief.Results.Ads},
+		{Path: "updatedAt", Value: firestore.ServerTimestamp},
+	}
+
+	_, err = s.db.Collection("briefs").Doc(briefID).Update(ctx, updates)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update brief with refreshed URLs: %w", err)
+	}
+
+	log.Printf("✅ REFRESH IMAGE URLS: Successfully refreshed all URLs for brief %s", briefID)
+	return brief, nil
+}
+
+// discoverObjectName attempts to discover the GCS object name for backward compatibility
+func (s *BrandBriefService) discoverObjectName(ctx context.Context, imageURL, companyName string, campaignIndex int) (string, error) {
+	// Try to list objects in the bucket that match the company name pattern
+	bucket := s.storage.Bucket(s.bucketName)
+
+	// Create a prefix to search for objects
+	prefix := fmt.Sprintf("ads/%s_ad_", companyName)
+
+	// List objects with the prefix
+	query := &storage.Query{Prefix: prefix}
+	objectIterator := bucket.Objects(ctx, query)
+
+	// Look for objects that might match this campaign
+	var possibleObjects []string
+	for {
+		objAttrs, err := objectIterator.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return "", fmt.Errorf("failed to list objects: %w", err)
+		}
+
+		// Remove the .png extension to get the object name
+		objectName := strings.TrimSuffix(objAttrs.Name, ".png")
+		possibleObjects = append(possibleObjects, objectName)
+	}
+
+	log.Printf("🔍 DISCOVER: Found %d possible objects for %s: %v", len(possibleObjects), companyName, possibleObjects)
+
+	// If we have objects, try to pick the most likely match
+	// Simple heuristic: if there are exactly as many objects as campaigns, use them in order
+	if len(possibleObjects) > campaignIndex {
+		return possibleObjects[campaignIndex], nil
+	}
+
+	return "", fmt.Errorf("no matching object found for campaign %d", campaignIndex)
 }

@@ -6,9 +6,23 @@ import App from './App.tsx'
 import { AuthProvider } from './contexts/AuthContext.tsx'
 import './index.css'
 
+// Unregister any existing service workers to prevent fetch errors
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then((registrations) => {
+    registrations.forEach((registration) => {
+      registration.unregister()
+    })
+  })
+}
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <BrowserRouter>
+    <BrowserRouter
+      future={{
+        v7_startTransition: true,
+        v7_relativeSplatPath: true,
+      }}
+    >
       <AuthProvider>
         <App />
         <Toaster 

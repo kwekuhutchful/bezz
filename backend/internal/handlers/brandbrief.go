@@ -248,3 +248,43 @@ func (h *BrandBriefHandler) Delete(c *gin.Context) {
 		Message: "Brief deleted successfully",
 	})
 }
+
+// RefreshImageURLs refreshes expired signed URLs for brief images
+func (h *BrandBriefHandler) RefreshImageURLs(c *gin.Context) {
+	userID := middleware.GetUserID(c)
+	if userID == "" {
+		c.JSON(http.StatusUnauthorized, models.APIResponse{
+			Success: false,
+			Error:   "User not authenticated",
+		})
+		return
+	}
+
+	briefID := c.Param("id")
+	if briefID == "" {
+		c.JSON(http.StatusBadRequest, models.APIResponse{
+			Success: false,
+			Error:   "Brief ID is required",
+		})
+		return
+	}
+
+	log.Printf("🔄 REFRESH URLS: Starting for brief %s", briefID)
+
+	brief, err := h.briefService.RefreshImageURLs(c.Request.Context(), briefID, userID)
+	if err != nil {
+		log.Printf("❌ REFRESH URLS: Failed for brief %s: %v", briefID, err)
+		c.JSON(http.StatusInternalServerError, models.APIResponse{
+			Success: false,
+			Error:   "Failed to refresh image URLs",
+		})
+		return
+	}
+
+	log.Printf("✅ REFRESH URLS: Success for brief %s", briefID)
+	c.JSON(http.StatusOK, models.APIResponse{
+		Success: true,
+		Data:    brief,
+		Message: "Image URLs refreshed successfully",
+	})
+}

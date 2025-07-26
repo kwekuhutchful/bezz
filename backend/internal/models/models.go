@@ -110,6 +110,7 @@ type AdCampaign struct {
 	Copy          AdCopy   `json:"copy" firestore:"copy"`
 	ImagePrompt   string   `json:"imagePrompt" firestore:"imagePrompt"`
 	ImageURL      string   `json:"imageUrl,omitempty" firestore:"imageUrl,omitempty"`
+	ObjectName    string   `json:"objectName,omitempty" firestore:"objectName,omitempty"` // GCS object name for signed URL generation
 	TargetSegment string   `json:"targetSegment" firestore:"targetSegment"`
 	Objectives    []string `json:"objectives" firestore:"objectives"`
 }
@@ -224,4 +225,17 @@ type StrategistTargetSegment struct {
 type CampaignAngle struct {
 	Hook      string `json:"hook"`
 	Resonance string `json:"resonance"`
+}
+
+// CreativeDirectorGPTResponse represents the response from Creative-Director-GPT
+type CreativeDirectorGPTResponse struct {
+	Ads []AdSpec `json:"ads"`
+}
+
+// AdSpec represents an ad specification before image generation
+type AdSpec struct {
+	ID          int    `json:"id"`
+	Headline    string `json:"headline"`
+	Body        string `json:"body"`
+	DallePrompt string `json:"dalle_prompt"`
 }

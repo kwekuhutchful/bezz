@@ -37,7 +37,6 @@ const BrandBriefPage: React.FC = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
-  const [hoveredSector, setHoveredSector] = useState<string | null>(null);
   const [hoveredTone, setHoveredTone] = useState<string | null>(null);
 
   const {
@@ -80,19 +79,32 @@ const BrandBriefPage: React.FC = () => {
   ];
 
   const sectors = [
-    { name: 'Technology', icon: '💻', description: 'Software, SaaS, Hardware' },
-    { name: 'Healthcare', icon: '🏥', description: 'Medical, Wellness, Pharma' },
-    { name: 'Finance', icon: '💰', description: 'Banking, Fintech, Insurance' },
-    { name: 'E-commerce', icon: '🛒', description: 'Online Retail, Marketplace' },
-    { name: 'Education', icon: '📚', description: 'EdTech, Schools, Training' },
-    { name: 'Food & Beverage', icon: '🍽️', description: 'Restaurants, CPG, Delivery' },
-    { name: 'Fashion', icon: '👗', description: 'Apparel, Accessories, Beauty' },
-    { name: 'Travel', icon: '✈️', description: 'Tourism, Hospitality, Transport' },
-    { name: 'Real Estate', icon: '🏠', description: 'Property, Construction' },
-    { name: 'Automotive', icon: '🚗', description: 'Vehicles, Transportation' },
-    { name: 'Entertainment', icon: '🎬', description: 'Media, Gaming, Events' },
-    { name: 'Non-profit', icon: '🤝', description: 'NGO, Charity, Social' },
-    { name: 'Other', icon: '🔧', description: 'Other industries' }
+    { name: 'Technology', icon: '💻', description: 'Software, SaaS, Hardware, AI' },
+    { name: 'Healthcare', icon: '🏥', description: 'Medical, Wellness, Pharma, Biotech' },
+    { name: 'Finance', icon: '💰', description: 'Banking, Fintech, Insurance, Investment' },
+    { name: 'E-commerce', icon: '🛒', description: 'Online Retail, Marketplace, Dropshipping' },
+    { name: 'Education', icon: '📚', description: 'EdTech, Schools, Training, Courses' },
+    { name: 'Food & Beverage', icon: '🍽️', description: 'Restaurants, CPG, Delivery, Catering' },
+    { name: 'Fashion', icon: '👗', description: 'Apparel, Accessories, Beauty, Cosmetics' },
+    { name: 'Travel', icon: '✈️', description: 'Tourism, Hospitality, Transport, Hotels' },
+    { name: 'Real Estate', icon: '🏠', description: 'Property, Construction, Architecture' },
+    { name: 'Automotive', icon: '🚗', description: 'Vehicles, Auto Parts, Car Services' },
+    { name: 'Entertainment', icon: '🎬', description: 'Media, Gaming, Events, Streaming' },
+    { name: 'Sports & Fitness', icon: '⚽', description: 'Gyms, Equipment, Sports Teams' },
+    { name: 'Manufacturing', icon: '🏭', description: 'Industrial, Production, Machinery' },
+    { name: 'Agriculture', icon: '🌾', description: 'Farming, Food Production, Agtech' },
+    { name: 'Energy', icon: '⚡', description: 'Renewable, Oil & Gas, Utilities' },
+    { name: 'Telecommunications', icon: '📡', description: 'Internet, Mobile, Networking' },
+    { name: 'Legal Services', icon: '⚖️', description: 'Law Firms, Legal Tech, Consulting' },
+    { name: 'Marketing & Advertising', icon: '📢', description: 'Agencies, Digital Marketing, PR' },
+    { name: 'Consulting', icon: '💼', description: 'Business, Strategy, Management' },
+    { name: 'Logistics', icon: '📦', description: 'Shipping, Supply Chain, Warehousing' },
+    { name: 'Pet Care', icon: '🐕', description: 'Veterinary, Pet Products, Services' },
+    { name: 'Home & Garden', icon: '🏡', description: 'Home Improvement, Landscaping, Decor' },
+    { name: 'Arts & Crafts', icon: '🎨', description: 'Art Supplies, Handmade, Creative' },
+    { name: 'Non-profit', icon: '🤝', description: 'NGO, Charity, Social Impact, Foundations' },
+    { name: 'Government', icon: '🏛️', description: 'Public Sector, Municipal, Federal' },
+    { name: 'Other', icon: '🔧', description: 'Other industries not listed above' }
   ];
 
   const tones = [
@@ -113,9 +125,25 @@ const BrandBriefPage: React.FC = () => {
     { code: 'fr', name: 'French', flag: '🇫🇷' }
   ];
 
+  const [userInitiated, setUserInitiated] = useState(false);
+
   const onSubmit = async (data: BrandBriefForm) => {
+    console.log('Form submitted! Current step:', currentStep, 'Total steps:', steps.length, 'User initiated:', userInitiated);
+    
+    // Ensure we're on the final step AND user explicitly clicked the button
+    if (currentStep !== steps.length) {
+      console.log('Form submission prevented: not on final step');
+      return;
+    }
+
+    if (!userInitiated) {
+      console.log('Form submission prevented: not user-initiated');
+      return;
+    }
+
     if (!user || user.credits < 1) {
       toast.error('Insufficient credits to create a brief');
+      setUserInitiated(false); // Reset the flag
       return;
     }
 
@@ -125,11 +153,12 @@ const BrandBriefPage: React.FC = () => {
       const brief = response.data.data;
       
       toast.success('Brand brief created successfully! AI is now crafting your strategy...');
-      navigate(`/results/${brief.id}`);
+      navigate('/dashboard');
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Failed to create brief');
     } finally {
       setLoading(false);
+      setUserInitiated(false); // Reset the flag
     }
   };
 
@@ -139,6 +168,7 @@ const BrandBriefPage: React.FC = () => {
     
     if (isValid && currentStep < steps.length) {
       setCurrentStep(currentStep + 1);
+      setUserInitiated(false); // Reset flag when moving between steps
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
@@ -146,6 +176,7 @@ const BrandBriefPage: React.FC = () => {
   const prevStep = () => {
     if (currentStep > 1) {
       setCurrentStep(currentStep - 1);
+      setUserInitiated(false); // Reset flag when moving between steps
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
@@ -280,7 +311,20 @@ const BrandBriefPage: React.FC = () => {
       )}
 
       {/* Form Content */}
-      <form onSubmit={handleSubmit(onSubmit)}>
+      <form 
+        onSubmit={(e) => {
+          // Prevent default form submission - only allow manual submission via button
+          e.preventDefault();
+          console.log('Form onSubmit prevented - use button instead');
+        }}
+        onKeyDown={(e) => {
+          // Prevent Enter key from submitting the form except in textarea
+          const target = e.target as HTMLElement;
+          if (e.key === 'Enter' && target.tagName !== 'TEXTAREA') {
+            e.preventDefault();
+          }
+        }}
+      >
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 mb-8 animate-fade-in">
           {/* Step 1: Company Details */}
           {currentStep === 1 && (
@@ -332,8 +376,6 @@ const BrandBriefPage: React.FC = () => {
                     <label
                       key={sector.name}
                       className="relative cursor-pointer"
-                      onMouseEnter={() => setHoveredSector(sector.name)}
-                      onMouseLeave={() => setHoveredSector(null)}
                     >
                       <input
                         {...register('sector', {
@@ -356,11 +398,9 @@ const BrandBriefPage: React.FC = () => {
                             <p className={`font-medium ${watchedValues.sector === sector.name ? 'text-blue-700' : 'text-gray-900'}`}>
                               {sector.name}
                             </p>
-                            {hoveredSector === sector.name && (
-                              <p className="text-xs text-gray-500 mt-0.5">
-                                {sector.description}
-                              </p>
-                            )}
+                            <p className={`text-xs mt-0.5 ${watchedValues.sector === sector.name ? 'text-blue-600' : 'text-gray-500'}`}>
+                              {sector.description}
+                            </p>
                           </div>
                         </div>
                         {watchedValues.sector === sector.name && (
@@ -542,6 +582,12 @@ const BrandBriefPage: React.FC = () => {
                     }
                   `}
                   placeholder="Describe demographics, interests, pain points, behaviors, location, and what motivates them..."
+                  onKeyDown={(e) => {
+                    // Prevent Enter from submitting the form, but allow new lines in textarea
+                    if (e.key === 'Enter') {
+                      e.stopPropagation(); // Prevent event from bubbling up to form
+                    }
+                  }}
                 />
                 {errors.targetAudience && (
                   <p className="mt-2 text-sm text-red-600 flex items-center">
@@ -610,6 +656,12 @@ const BrandBriefPage: React.FC = () => {
                   rows={5}
                   className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-indigo-500 focus:border-indigo-500 transition-all"
                   placeholder="Tell us about your competitors, what makes you unique, your goals, or any specific requirements for your brand..."
+                  onKeyDown={(e) => {
+                    // Prevent Enter from submitting the form, but allow new lines in textarea
+                    if (e.key === 'Enter') {
+                      e.stopPropagation(); // Prevent event from bubbling up to form
+                    }
+                  }}
                 />
                 
                 <p className="mt-2 text-sm text-gray-500">
@@ -741,7 +793,13 @@ const BrandBriefPage: React.FC = () => {
               </button>
             ) : (
               <button
-                type="submit"
+                type="button"
+                onClick={() => {
+                  console.log('User clicked submit button');
+                  setUserInitiated(true);
+                  // Trigger form submission manually
+                  handleSubmit(onSubmit)();
+                }}
                 disabled={loading || !user || user.credits < 1}
                 className={`
                   inline-flex items-center px-8 py-3 font-medium rounded-xl transition-all
