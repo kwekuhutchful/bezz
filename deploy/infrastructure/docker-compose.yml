@@ -6,12 +6,12 @@ services:
       context: ./frontend
       dockerfile: Dockerfile.dev
     ports:
-      - "3000:3000"
+      - "3001:3000"
     volumes:
       - ./frontend:/app
       - /app/node_modules
     environment:
-      - VITE_API_URL=http://localhost:8080
+      - VITE_API_URL=http://localhost:8081
     depends_on:
       - backend
 
@@ -20,12 +20,13 @@ services:
       context: ./backend
       dockerfile: Dockerfile.dev
     ports:
-      - "8080:8080"
+      - "8081:8080"
     volumes:
       - ./backend:/app
     environment:
       - PORT=8080
       - GIN_MODE=debug
+      - CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3001
       - FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
       - FIREBASE_API_KEY=${FIREBASE_API_KEY}
       - GOOGLE_APPLICATION_CREDENTIALS=/app/service-account.json

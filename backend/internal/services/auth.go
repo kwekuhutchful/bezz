@@ -8,7 +8,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"os"
 
 	"firebase.google.com/go/v4/auth"
 )
@@ -29,12 +28,12 @@ type AuthService struct {
 }
 
 // NewAuthService creates a new auth service
-func NewAuthService(authClient *auth.Client) *AuthService {
-	// Get Firebase API key from environment
-	apiKey := os.Getenv("FIREBASE_API_KEY")
+func NewAuthService(authClient *auth.Client, apiKey string) *AuthService {
 	if apiKey == "" {
-		log.Printf("WARNING: FIREBASE_API_KEY environment variable not set. Firebase Auth REST API will not work.")
+		log.Printf("WARNING: Firebase API key not provided. Firebase Auth REST API will not work.")
 		apiKey = "your_firebase_api_key_here" // Placeholder
+	} else {
+		log.Printf("Firebase API key loaded successfully: %s...", apiKey[:8])
 	}
 
 	return &AuthService{

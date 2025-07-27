@@ -132,6 +132,14 @@ Bezz AI employs a sophisticated multi-stage AI pipeline to transform brand brief
 
 1. **Start the development environment**
    ```bash
+   # Full development environment (both frontend and backend)
+   ./deploy/scripts/dev-local.sh
+
+   # Or start individual services
+   ./deploy/scripts/dev-backend.sh    # Backend only
+   ./deploy/scripts/dev-frontend.sh   # Frontend only
+
+   # Or use npm (legacy method)
    npm run dev
    ```
 
@@ -164,9 +172,14 @@ bezz-ai/
 │   │   └── config/         # Configuration management
 │   ├── main.go             # Application entry point
 │   └── go.mod
-├── infra/                  # Infrastructure configurations
+├── deploy/                  # Deployment configurations & scripts
+│   ├── backend/            # Backend deployment configs
+│   ├── frontend/           # Frontend deployment configs
+│   ├── infrastructure/     # Docker & infrastructure
+│   └── scripts/           # Deployment & setup scripts
+├── documentation/          # Technical documentation
 ├── .github/workflows/      # CI/CD workflows
-└── docker-compose.yml      # Local development setup
+└── README.md              # Project documentation
 ```
 
 ## 🔧 Development Workflow
@@ -222,37 +235,51 @@ docker-compose logs          # View logs
 
 ## 🌍 Deployment
 
-### Google Cloud Platform
+### Quick Start (Production)
 
-1. **Backend Deployment (Cloud Run)**
-   - Containerized Go application
-   - Auto-scaling based on demand
-   - Environment variable management
-   - Health checks and monitoring
+1. **Initial Setup**
+   ```bash
+   # Run setup script to create service account and secrets
+   ./deploy/scripts/setup-cloud.sh
+   ```
 
-2. **Frontend Deployment (Firebase Hosting)**
-   - Static site hosting
-   - Global CDN distribution
-   - Custom domain support
-   - SSL certificate management
+2. **Configure Secrets**
+   ```bash
+   # Add your actual values to Secret Manager
+   echo -n 'YOUR_FIREBASE_WEB_API_KEY' | gcloud secrets versions add firebase-api-key --data-file=-
+   echo -n 'YOUR_OPENAI_API_KEY' | gcloud secrets versions add openai-api-key --data-file=-
+   echo -n 'YOUR_BUCKET_NAME' | gcloud secrets versions add gcs-bucket-name --data-file=-
+   ```
 
-### CI/CD Pipeline
+3. **Deploy**
+   ```bash
+   # Full deployment (builds and deploys both services)
+   ./deploy/scripts/deploy-cloud.sh
+   
+   # Quick deployment (uses existing images)
+   ./deploy/scripts/deploy-cloud-quick.sh
+   ```
 
-The project uses GitHub Actions for automated testing and deployment:
+### Architecture & Security
 
-1. **Testing Phase**
-   - Frontend: ESLint, TypeScript compilation, unit tests
-   - Backend: Go tests, linting, security checks
+- **Dedicated Service Account**: `bezz-backend-sa@bezz-777eb.iam.gserviceaccount.com`
+- **Secret Management**: Google Cloud Secret Manager (no local credential files)
+- **Minimal Permissions**: Only required IAM roles granted
+- **Environment**: Production uses project number (`981046325818`)
 
-2. **Build Phase**
-   - Docker image creation
-   - Static asset optimization
-   - Environment-specific builds
+### Deployment Structure
 
-3. **Deployment Phase**
-   - Cloud Run service deployment
-   - Firebase Hosting deployment
-   - Environment variable injection
+All deployment assets are organized in the `deploy/` folder:
+
+```
+deploy/
+├── backend/                 # Backend configurations
+├── frontend/               # Frontend configurations  
+├── infrastructure/         # Docker & infrastructure
+└── scripts/               # Deployment scripts
+```
+
+For detailed deployment information, see [`deploy/README.md`](deploy/README.md).
 
 ## 🧪 Testing
 

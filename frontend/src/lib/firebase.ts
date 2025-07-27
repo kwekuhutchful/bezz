@@ -1,14 +1,15 @@
 import { initializeApp } from 'firebase/app'
 import { getAuth, signInWithCustomToken } from 'firebase/auth'
 
-// Firebase configuration - using environment variables from backend
+// Firebase configuration - using correct values from Firebase console
 const firebaseConfig = {
-  apiKey: "AIzaSyBJKqGxGVP-PQcR-XYsY5XpGJgPuVnTmHc", // Public API key (safe to expose)
+  apiKey: "AIzaSyCcbWyoYIGFwgH0byeJFSUP_HAjXR1v_HQ",
   authDomain: "bezz-777eb.firebaseapp.com",
   projectId: "bezz-777eb",
-  storageBucket: "bezz-777eb.appspot.com",
-  messagingSenderId: "123456789", // Replace with actual
-  appId: "1:123456789:web:abcdef123456" // Replace with actual
+  storageBucket: "bezz-777eb.firebasestorage.app",
+  messagingSenderId: "981046325818",
+  appId: "1:981046325818:web:090f9e34114eef19c6bb03",
+  measurementId: "G-NFD3RB53GJ"
 }
 
 // Initialize Firebase
