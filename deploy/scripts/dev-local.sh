@@ -6,7 +6,7 @@ echo "=================================="
 # Function to start backend
 start_backend() {
     echo "Starting backend..."
-    ./start-backend.sh &
+    ./deploy/scripts/dev-backend.sh &
     BACKEND_PID=$!
     echo "Backend started with PID: $BACKEND_PID"
 }
@@ -14,7 +14,7 @@ start_backend() {
 # Function to start frontend
 start_frontend() {
     echo "Starting frontend..."
-    ./start-frontend.sh &
+    ./deploy/scripts/dev-frontend.sh &
     FRONTEND_PID=$!
     echo "Frontend started with PID: $FRONTEND_PID"
 }
@@ -69,10 +69,16 @@ case "${1:-both}" in
         echo ""
         echo "Press Ctrl+C to stop both services..."
         
-        # Wait for either process to finish
-        wait -n $BACKEND_PID $FRONTEND_PID
+        # Wait for user to press Ctrl+C
+        trap 'echo ""; echo "🛑 Stopping services..."; kill $BACKEND_PID $FRONTEND_PID 2>/dev/null; exit 0' INT
         
-        # Kill remaining processes
+        # Keep script running until interrupted
+        while kill -0 $BACKEND_PID 2>/dev/null && kill -0 $FRONTEND_PID 2>/dev/null; do
+            sleep 1
+        done
+        
+        # If we get here, one of the processes died
+        echo "⚠️  One of the services stopped unexpectedly"
         kill $BACKEND_PID $FRONTEND_PID 2>/dev/null
         ;;
     "help"|"-h"|"--help")

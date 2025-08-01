@@ -67,19 +67,34 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <div className="flex h-full flex-col">
             {/* Logo Section */}
             <div className="flex h-20 items-center justify-between px-6 border-b border-gray-200/50">
-              <Link to="/dashboard" className="flex items-center space-x-3 group">
-                <div className="relative">
-                  <div className="absolute inset-0 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl blur group-hover:blur-md transition-all"></div>
-                  <div className="relative w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center transform group-hover:scale-110 transition-transform">
-                    <SparklesIcon className="h-6 w-6 text-white" />
+              <Link to="/dashboard" className="flex flex-col items-start group">
+                <div className="relative mb-2">
+                  {/* Logo Image - using dark version for sidebar, maintaining aspect ratio */}
+                  <img 
+                    src="/logo_dark.png" 
+                    alt="Bezz AI Logo"
+                    className="h-5 w-auto transform group-hover:scale-110 transition-transform"
+                    onError={(e) => {
+                      // Fallback to light version if dark fails
+                      const target = e.target as HTMLImageElement;
+                      if (target.src.includes('dark')) {
+                        target.src = '/logo_light.png';
+                      } else {
+                        // If both fail, hide image and show gradient icon
+                        target.style.display = 'none';
+                        const fallback = target.nextElementSibling as HTMLElement;
+                        if (fallback) fallback.style.display = 'flex';
+                      }
+                    }}
+                  />
+                  {/* Fallback gradient icon (hidden by default) */}
+                  <div 
+                    className="relative w-5 h-5 bg-gradient-to-br from-cyan-400 to-yellow-500 rounded-xl items-center justify-center transform group-hover:scale-110 transition-transform hidden"
+                  >
+                    <SparklesIcon className="h-5 w-5 text-white" />
                   </div>
                 </div>
-                <div>
-                  <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                    Bezz AI
-                  </span>
-                  <p className="text-xs text-gray-500">Brand Intelligence</p>
-                </div>
+                <p className="text-xs text-gray-500 text-left">Brand Intelligence</p>
               </Link>
               <button
                 type="button"
@@ -94,7 +109,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             <div className="px-4 py-4">
               <button
                 onClick={() => navigate('/brief')}
-                className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-medium hover:shadow-lg transform hover:scale-105 transition-all"
+                className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-gradient-to-r from-cyan-500 to-yellow-500 text-white rounded-xl font-medium hover:shadow-lg transform hover:scale-105 transition-all"
               >
                 <PlusIcon className="h-5 w-5" />
                 <span>Create New Brand</span>
@@ -112,7 +127,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                     className={`
                       group flex items-center px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200
                       ${isActive 
-                        ? 'bg-gradient-to-r from-blue-50 to-purple-50 text-blue-700 shadow-sm' 
+                        ? 'bg-gradient-to-r from-cyan-50 to-yellow-50 text-cyan-700 shadow-sm' 
                         : 'text-gray-700 hover:bg-gray-50'
                       }
                     `}
@@ -121,7 +136,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                     <div className={`
                       mr-3 p-2 rounded-lg transition-all
                       ${isActive 
-                        ? 'bg-gradient-to-br from-blue-600 to-purple-600' 
+                        ? 'bg-gradient-to-br from-cyan-500 to-yellow-500' 
                         : 'bg-gray-100 group-hover:bg-gray-200'
                       }
                     `}>
@@ -132,7 +147,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                       <p className="text-xs text-gray-500 mt-0.5">{item.description}</p>
                     </div>
                     {isActive && (
-                      <ChevronRightIcon className="h-5 w-5 text-blue-600" />
+                      <ChevronRightIcon className="h-5 w-5 text-cyan-600" />
                     )}
                   </Link>
                 );
@@ -159,7 +174,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   {(!user?.subscription || user?.subscription?.plan === 'starter') && (
                     <button
                       onClick={() => navigate('/profile')}
-                      className="w-full mt-2 text-xs bg-gradient-to-r from-blue-600 to-purple-600 text-white py-2 rounded-lg font-medium hover:shadow-md transition-all"
+                      className="w-full mt-2 text-xs bg-gradient-to-r from-cyan-500 to-yellow-500 text-white py-2 rounded-lg font-medium hover:shadow-md transition-all"
                     >
                       Upgrade to Pro
                     </button>
@@ -179,7 +194,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                       alt={user.displayName || user.email}
                     />
                   ) : (
-                    <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center ring-2 ring-gray-200">
+                    <div className="h-10 w-10 rounded-full bg-gradient-to-br from-cyan-500 to-yellow-500 flex items-center justify-center ring-2 ring-gray-200">
                       <span className="text-sm font-medium text-white">
                         {user?.displayName?.[0] || user?.email[0].toUpperCase()}
                       </span>
@@ -239,7 +254,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 {/* Search Bar */}
                 <div className={`
                   hidden md:flex items-center space-x-2 px-4 py-2 bg-gray-50 rounded-lg transition-all
-                  ${searchFocused ? 'w-80 ring-2 ring-blue-500 bg-white' : 'w-64'}
+                  ${searchFocused ? 'w-80 ring-2 ring-cyan-500 bg-white' : 'w-64'}
                 `}>
                   <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
                   <input
@@ -260,7 +275,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 {/* Quick Create Button (Desktop) */}
                 <button
                   onClick={() => navigate('/brief')}
-                  className="hidden lg:flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-medium hover:shadow-md transition-all"
+                  className="hidden lg:flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-cyan-500 to-yellow-500 text-white rounded-lg font-medium hover:shadow-md transition-all"
                 >
                   <PlusIcon className="h-4 w-4" />
                   <span>Create</span>

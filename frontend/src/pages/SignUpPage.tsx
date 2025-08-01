@@ -55,11 +55,19 @@ export default function SignUpPage() {
       <div className="flex-1 flex items-center justify-center px-4 sm:px-6 lg:px-8">
         <div className="max-w-md w-full">
           {/* Logo */}
-          <Link to="/" className="flex items-center justify-center space-x-2 mb-8">
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-              <SparklesIcon className="h-6 w-6 text-white" />
-            </div>
-            <span className="font-bold text-2xl text-gray-900">Bezz AI</span>
+          <Link to="/" className="flex flex-col items-center justify-center mb-8">
+            <img 
+              src="/logo_dark.png" 
+              alt="Bezz AI Logo"
+              className="h-7 w-auto mb-2"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                if (target.src.includes('dark')) {
+                  target.src = '/logo_light.png';
+                }
+              }}
+            />
+            <span className="text-sm text-gray-600">Brand Intelligence</span>
           </Link>
 
           {/* Form Container */}
@@ -191,7 +199,7 @@ export default function SignUpPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 px-4 rounded-lg font-medium hover:shadow-lg transition transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                className="w-full bg-gradient-to-r from-cyan-500 to-yellow-500 text-white py-3 px-4 rounded-lg font-medium hover:shadow-lg transition transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
               >
                 {loading ? (
                   <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
@@ -240,7 +248,7 @@ export default function SignUpPage() {
       </div>
 
       {/* Right Side - Benefits */}
-      <div className="hidden lg:flex flex-1 bg-gradient-to-br from-blue-600 to-purple-600 items-center justify-center px-8">
+      <div className="hidden lg:flex flex-1 bg-gradient-to-br from-cyan-500 to-yellow-500 items-center justify-center px-8">
         <div className="max-w-lg">
           <h3 className="text-3xl font-bold text-white mb-6">
             Start building your brand in minutes

@@ -536,10 +536,10 @@ ${brief.results.strategy.targetSegments?.map((segment, i) =>
 
                 {/* Value Proposition */}
                 <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                  <div className="border-l-4 border-purple-500 pl-6 pr-8 py-6">
+                  <div className="border-l-4 border-cyan-500 pl-6 pr-8 py-6">
                     <div className="flex items-center mb-3">
-                      <div className="p-1.5 bg-purple-100 rounded-lg mr-3">
-                        <StarIcon className="h-4 w-4 text-purple-600" />
+                      <div className="p-1.5 bg-cyan-100 rounded-lg mr-3">
+                        <StarIcon className="h-4 w-4 text-cyan-600" />
                       </div>
                       <h2 className="text-lg font-semibold text-gray-900">Value Proposition</h2>
                     </div>
@@ -565,10 +565,10 @@ ${brief.results.strategy.targetSegments?.map((segment, i) =>
                     </p>
                     <p className="text-xs text-gray-600">Target Segments</p>
                   </div>
-                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200 hover:bg-purple-50 hover:border-purple-200 transition-all">
+                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200 hover:bg-cyan-50 hover:border-cyan-200 transition-all">
                     <div className="flex items-center mb-3">
-                      <div className="p-1.5 bg-purple-100 rounded">
-                        <MegaphoneIcon className="h-3.5 w-3.5 text-purple-600" />
+                      <div className="p-1.5 bg-cyan-100 rounded">
+                        <MegaphoneIcon className="h-3.5 w-3.5 text-cyan-600" />
                       </div>
                     </div>
                     <p className="text-2xl font-semibold text-gray-900 mb-1">
@@ -621,11 +621,11 @@ ${brief.results.strategy.targetSegments?.map((segment, i) =>
                   </button>
                   <button
                     onClick={() => setActiveTab('campaigns')}
-                    className="group p-4 rounded-lg hover:bg-purple-50 transition-all text-left"
+                    className="group p-4 rounded-lg hover:bg-cyan-50 transition-all text-left"
                   >
                     <div className="flex items-start">
-                      <div className="p-2 bg-purple-100 rounded-lg group-hover:bg-purple-200 transition-colors">
-                        <MegaphoneIcon className="h-4 w-4 text-purple-600" />
+                      <div className="p-2 bg-cyan-100 rounded-lg group-hover:bg-cyan-200 transition-colors">
+                        <MegaphoneIcon className="h-4 w-4 text-cyan-600" />
                       </div>
                       <div className="ml-3">
                         <h4 className="text-sm font-medium text-gray-900">Ad Campaigns</h4>
@@ -670,12 +670,12 @@ ${brief.results.strategy.targetSegments?.map((segment, i) =>
                 </div>
               </div>
 
-              {/* Value Proposition - Secondary with purple accent */}
+              {/* Value Proposition - Secondary with cyan accent */}
               <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                <div className="border-l-4 border-purple-500 pl-6 pr-8 py-6">
+                <div className="border-l-4 border-cyan-500 pl-6 pr-8 py-6">
                   <div className="flex items-center mb-3">
-                    <div className="p-1.5 bg-purple-100 rounded-lg mr-3">
-                      <StarIcon className="h-4 w-4 text-purple-600" />
+                    <div className="p-1.5 bg-cyan-100 rounded-lg mr-3">
+                      <StarIcon className="h-4 w-4 text-cyan-600" />
                     </div>
                     <h2 className="text-lg font-semibold text-gray-900">Value Proposition</h2>
                   </div>
@@ -748,7 +748,7 @@ ${brief.results.strategy.targetSegments?.map((segment, i) =>
                   {safeResults.strategy.targetSegments.map((segment, index) => (
                     <div 
                       key={index} 
-                      className="bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-200 rounded-lg p-6 hover:shadow-lg transition-all"
+                      className="bg-gradient-to-br from-cyan-50 to-yellow-50 border border-indigo-200 rounded-lg p-6 hover:shadow-lg transition-all"
                     >
                       {/* Segment Header */}
                       <div className="flex items-center mb-4">
@@ -815,7 +815,7 @@ ${brief.results.strategy.targetSegments?.map((segment, i) =>
                     <select 
                       value={platformFilter}
                       onChange={(e) => setPlatformFilter(e.target.value)}
-                      className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                      className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
                     >
                       <option value="">All Platforms</option>
                       <option value="facebook">Facebook</option>
@@ -831,7 +831,7 @@ ${brief.results.strategy.targetSegments?.map((segment, i) =>
                     </button>
                     <button 
                       onClick={handleExportAll}
-                      className="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg text-sm font-medium hover:bg-purple-200 transition-colors"
+                      className="px-4 py-2 bg-cyan-100 text-cyan-700 rounded-lg text-sm font-medium hover:bg-cyan-200 transition-colors"
                     >
                       Export All ({filteredCampaigns.length})
                     </button>
@@ -848,15 +848,15 @@ ${brief.results.strategy.targetSegments?.map((segment, i) =>
                   return (
                     <div 
                       key={index} 
-                      className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:border-purple-200 hover:shadow-lg transition-all group"
+                      className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:border-cyan-200 hover:shadow-lg transition-all group"
                     >
                       <div className="p-4">
                         {/* Campaign Header */}
                         <div className="flex items-start justify-between mb-4">
                           <div className="flex-1">
                             <div className="flex items-center space-x-3 mb-2">
-                              <div className="p-1.5 bg-purple-100 rounded">
-                                <PlatformIcon className="h-3.5 w-3.5 text-purple-600" />
+                              <div className="p-1.5 bg-cyan-100 rounded">
+                                <PlatformIcon className="h-3.5 w-3.5 text-cyan-600" />
                               </div>
                               <div className="p-1.5 bg-gray-100 rounded">
                                 <FormatIcon className="h-3.5 w-3.5 text-gray-600" />
@@ -865,7 +865,7 @@ ${brief.results.strategy.targetSegments?.map((segment, i) =>
                             <h3 className="font-medium text-gray-900">{campaign.title}</h3>
                             <p className="text-xs text-gray-500 mt-1">{campaign.platform} • {campaign.format}</p>
                           </div>
-                          <span className="px-2.5 py-1 bg-purple-50 text-purple-700 text-xs font-medium rounded-md">
+                          <span className="px-2.5 py-1 bg-cyan-50 text-cyan-700 text-xs font-medium rounded-md">
                             {campaign.targetSegment}
                           </span>
                         </div>
@@ -925,7 +925,7 @@ ${brief.results.strategy.targetSegments?.map((segment, i) =>
                           {/* Toggle Details Button */}
                           <button
                             onClick={() => handleToggleCampaignDetails(index)}
-                            className="w-full py-1.5 text-xs text-purple-600 hover:text-purple-700 font-medium transition-colors flex items-center justify-center"
+                            className="w-full py-1.5 text-xs text-cyan-600 hover:text-cyan-700 font-medium transition-colors flex items-center justify-center"
                           >
                             {selectedCampaign === index ? (
                               <>
@@ -1097,7 +1097,7 @@ ${brief.results.strategy.targetSegments?.map((segment, i) =>
                 <div className="space-y-6">
                   <div>
                     <div className="flex items-center space-x-2 mb-3">
-                      <span className="px-3 py-1 bg-purple-50 text-purple-700 text-sm font-medium rounded-full">
+                      <span className="px-3 py-1 bg-cyan-50 text-cyan-700 text-sm font-medium rounded-full">
                         {previewModal.campaign.platform}
                       </span>
                       <span className="px-3 py-1 bg-gray-100 text-gray-700 text-sm font-medium rounded-full">

@@ -112,11 +112,11 @@ const BrandBriefPage: React.FC = () => {
     { name: 'Friendly', color: 'from-yellow-500 to-orange-500', description: 'Warm, approachable, casual' },
     { name: 'Authoritative', color: 'from-blue-800 to-indigo-900', description: 'Expert, commanding, trusted' },
     { name: 'Casual', color: 'from-green-500 to-teal-500', description: 'Relaxed, conversational, easy' },
-    { name: 'Luxury', color: 'from-purple-700 to-pink-700', description: 'Premium, exclusive, refined' },
-    { name: 'Playful', color: 'from-pink-500 to-purple-500', description: 'Fun, energetic, creative' },
+    { name: 'Luxury', color: 'from-yellow-600 to-yellow-700', description: 'Premium, exclusive, refined' },
+    { name: 'Playful', color: 'from-cyan-400 to-yellow-500', description: 'Fun, energetic, creative' },
     { name: 'Inspirational', color: 'from-blue-500 to-cyan-500', description: 'Motivating, uplifting, positive' },
     { name: 'Trustworthy', color: 'from-blue-600 to-blue-800', description: 'Reliable, honest, secure' },
-    { name: 'Innovative', color: 'from-purple-600 to-blue-600', description: 'Modern, cutting-edge, bold' },
+    { name: 'Innovative', color: 'from-cyan-500 to-cyan-600', description: 'Modern, cutting-edge, bold' },
     { name: 'Traditional', color: 'from-amber-600 to-amber-800', description: 'Classic, established, timeless' }
   ];
 
@@ -220,8 +220,8 @@ const BrandBriefPage: React.FC = () => {
           
           {/* Credits Display */}
           <div className="text-right">
-            <div className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl">
-              <SparklesIcon className="h-5 w-5 text-purple-600 mr-2" />
+            <div className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-cyan-50 to-yellow-50 rounded-xl">
+              <SparklesIcon className="h-5 w-5 text-cyan-600 mr-2" />
               <span className="text-sm font-medium text-gray-700">
                 {user?.credits || 0} credits available
               </span>
@@ -233,7 +233,7 @@ const BrandBriefPage: React.FC = () => {
         <div className="relative">
           <div className="overflow-hidden rounded-xl bg-gray-100 p-1">
             <div 
-              className="h-2 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg transition-all duration-500 ease-out"
+              className="h-2 bg-gradient-to-r from-cyan-500 to-yellow-500 rounded-lg transition-all duration-500 ease-out"
               style={{ width: `${(currentStep / steps.length) * 100}%` }}
             />
           </div>
@@ -246,7 +246,7 @@ const BrandBriefPage: React.FC = () => {
                 className={`
                   flex items-center space-x-3 p-3 rounded-lg transition-all cursor-pointer
                   ${currentStep === step.id 
-                    ? 'bg-gradient-to-r from-blue-50 to-purple-50 shadow-sm' 
+                    ? 'bg-gradient-to-r from-cyan-50 to-yellow-50 shadow-sm' 
                     : isStepComplete(step.id)
                     ? 'bg-green-50'
                     : 'bg-white'
@@ -261,7 +261,7 @@ const BrandBriefPage: React.FC = () => {
                 <div className={`
                   p-2 rounded-lg transition-all
                   ${currentStep === step.id 
-                    ? 'bg-gradient-to-br from-blue-600 to-purple-600' 
+                    ? 'bg-gradient-to-br from-cyan-500 to-yellow-500' 
                     : isStepComplete(step.id)
                     ? 'bg-green-500'
                     : 'bg-gray-200'
@@ -274,7 +274,7 @@ const BrandBriefPage: React.FC = () => {
                   )}
                 </div>
                 <div className="hidden md:block">
-                  <p className={`text-xs font-medium ${currentStep === step.id ? 'text-purple-700' : 'text-gray-700'}`}>
+                  <p className={`text-xs font-medium ${currentStep === step.id ? 'text-cyan-700' : 'text-gray-700'}`}>
                     Step {step.id}
                   </p>
                   <p className={`text-sm ${currentStep === step.id ? 'font-semibold text-gray-900' : 'text-gray-600'}`}>
@@ -330,7 +330,7 @@ const BrandBriefPage: React.FC = () => {
           {currentStep === 1 && (
             <div className="space-y-6 animate-slide-up">
               <div className="text-center mb-8">
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl mb-4">
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-cyan-500 to-yellow-500 rounded-2xl mb-4">
                   <BuildingOfficeIcon className="h-8 w-8 text-white" />
                 </div>
                 <h2 className="text-2xl font-bold text-gray-900 mb-2">Let's start with your company</h2>
@@ -388,7 +388,7 @@ const BrandBriefPage: React.FC = () => {
                       <div className={`
                         p-4 rounded-xl border-2 transition-all
                         ${watchedValues.sector === sector.name 
-                          ? 'border-blue-500 bg-gradient-to-r from-blue-50 to-purple-50 shadow-md' 
+                          ? 'border-blue-500 bg-gradient-to-r from-cyan-50 to-yellow-50 shadow-md' 
                           : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
                         }
                       `}>
@@ -426,7 +426,7 @@ const BrandBriefPage: React.FC = () => {
           {currentStep === 2 && (
             <div className="space-y-6 animate-slide-up">
               <div className="text-center mb-8">
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-purple-600 to-pink-600 rounded-2xl mb-4">
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-2xl mb-4">
                   <MegaphoneIcon className="h-8 w-8 text-white" />
                 </div>
                 <h2 className="text-2xl font-bold text-gray-900 mb-2">Define your brand personality</h2>
@@ -456,7 +456,7 @@ const BrandBriefPage: React.FC = () => {
                       <div className={`
                         p-4 rounded-xl border-2 transition-all
                         ${watchedValues.tone === tone.name 
-                          ? 'border-purple-500 shadow-md' 
+                          ? 'border-cyan-500 shadow-md' 
                           : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
                         }
                       `}>
@@ -473,7 +473,7 @@ const BrandBriefPage: React.FC = () => {
                             </p>
                           </div>
                           {watchedValues.tone === tone.name && (
-                            <CheckIcon className="h-5 w-5 text-purple-600 flex-shrink-0 ml-2" />
+                            <CheckIcon className="h-5 w-5 text-cyan-600 flex-shrink-0 ml-2" />
                           )}
                         </div>
                       </div>
@@ -506,17 +506,17 @@ const BrandBriefPage: React.FC = () => {
                       <div className={`
                         p-4 rounded-xl border-2 transition-all text-center
                         ${watchedValues.language === lang.code 
-                          ? 'border-purple-500 bg-gradient-to-r from-purple-50 to-pink-50 shadow-md' 
+                          ? 'border-cyan-500 bg-gradient-to-r from-yellow-50 to-yellow-100 shadow-md' 
                           : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
                         }
                       `}>
                         <span className="text-3xl mb-2 block">{lang.flag}</span>
-                        <p className={`font-medium ${watchedValues.language === lang.code ? 'text-purple-700' : 'text-gray-900'}`}>
+                        <p className={`font-medium ${watchedValues.language === lang.code ? 'text-cyan-700' : 'text-gray-900'}`}>
                           {lang.name}
                         </p>
                         {watchedValues.language === lang.code && (
                           <div className="absolute top-2 right-2">
-                            <CheckIcon className="h-5 w-5 text-purple-600" />
+                            <CheckIcon className="h-5 w-5 text-cyan-600" />
                           </div>
                         )}
                       </div>
@@ -551,7 +551,7 @@ const BrandBriefPage: React.FC = () => {
                 
                 {/* Example Cards */}
                 <div className="mb-4 grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200">
+                  <div className="p-4 bg-gradient-to-r from-cyan-50 to-yellow-50 rounded-lg border border-blue-200">
                     <p className="text-sm font-medium text-blue-900 mb-1">Example 1:</p>
                     <p className="text-sm text-blue-700">
                       "Young professionals aged 25-35 in urban African cities who value convenience and modern technology. They have disposable income and prefer mobile-first solutions."
@@ -670,9 +670,9 @@ const BrandBriefPage: React.FC = () => {
               </div>
 
               {/* Preview Summary */}
-              <div className="mt-8 p-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-200">
+              <div className="mt-8 p-6 bg-gradient-to-r from-cyan-50 to-yellow-50 rounded-xl border border-blue-200">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                  <SparklesIcon className="h-5 w-5 text-purple-600 mr-2" />
+                  <SparklesIcon className="h-5 w-5 text-cyan-600 mr-2" />
                   Your Brand Brief Summary
                 </h3>
                 <div className="space-y-3">
@@ -709,7 +709,7 @@ const BrandBriefPage: React.FC = () => {
 
         {/* What You'll Get Section (visible on last step) */}
         {currentStep === steps.length && (
-          <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 mb-8 text-white animate-scale-in">
+          <div className="bg-gradient-to-r from-cyan-500 to-yellow-500 rounded-2xl p-8 mb-8 text-white animate-scale-in">
             <div className="flex items-start">
               <div className="flex-shrink-0">
                 <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
@@ -786,7 +786,7 @@ const BrandBriefPage: React.FC = () => {
               <button
                 type="button"
                 onClick={nextStep}
-                className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-medium rounded-xl hover:shadow-lg transform hover:scale-105 transition-all"
+                className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-cyan-500 to-yellow-500 text-white font-medium rounded-xl hover:shadow-lg transform hover:scale-105 transition-all"
               >
                 Next Step
                 <ArrowRightIcon className="h-5 w-5 ml-2" />
@@ -805,7 +805,7 @@ const BrandBriefPage: React.FC = () => {
                   inline-flex items-center px-8 py-3 font-medium rounded-xl transition-all
                   ${loading || !user || user.credits < 1
                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    : 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:shadow-lg transform hover:scale-105'
+                    : 'bg-gradient-to-r from-cyan-500 to-yellow-500 text-white hover:shadow-lg transform hover:scale-105'
                   }
                 `}
               >

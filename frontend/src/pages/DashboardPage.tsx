@@ -141,7 +141,7 @@ const DashboardPage: React.FC = () => {
   return (
     <div className="w-full">
       {/* Welcome Section with Gradient Background */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 p-8 mb-8">
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-cyan-500 via-yellow-500 to-yellow-600 p-8 mb-8">
         <div className="absolute inset-0 bg-black/10"></div>
         <div className="relative z-10">
           <h1 className="text-3xl font-bold text-white mb-2">
@@ -181,10 +181,10 @@ const DashboardPage: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {/* Credits Card */}
         <div className="relative overflow-hidden bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 p-6">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-full -mr-16 -mt-16"></div>
+          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-cyan-500/10 to-yellow-500/10 rounded-full -mr-16 -mt-16"></div>
           <div className="relative">
             <div className="flex items-center justify-between mb-4">
-              <div className="p-3 bg-gradient-to-br from-blue-500 to-purple-500 rounded-lg">
+              <div className="p-3 bg-gradient-to-br from-cyan-500 to-yellow-500 rounded-lg">
                 <SparklesIcon className="h-6 w-6 text-white" />
               </div>
               <span className="text-3xl font-bold text-gray-900">{user?.credits || 0}</span>
@@ -230,10 +230,10 @@ const DashboardPage: React.FC = () => {
 
         {/* Success Rate Card */}
         <div className="relative overflow-hidden bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 p-6">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-full -mr-16 -mt-16"></div>
+          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-yellow-500/10 to-yellow-600/10 rounded-full -mr-16 -mt-16"></div>
           <div className="relative">
             <div className="flex items-center justify-between mb-4">
-              <div className="p-3 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg">
+              <div className="p-3 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-lg">
                 <ArrowTrendingUpIcon className="h-6 w-6 text-white" />
               </div>
               <span className="text-3xl font-bold text-gray-900">
@@ -340,7 +340,7 @@ const DashboardPage: React.FC = () => {
             {selectedFilter === 'all' && (
               <Link
                 to="/brief"
-                className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-medium rounded-xl hover:shadow-lg transform hover:scale-105 transition-all"
+                className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-cyan-500 to-yellow-500 text-white font-medium rounded-xl hover:shadow-lg transform hover:scale-105 transition-all"
               >
                 <PlusIcon className="h-5 w-5 mr-2" />
                 Create Your First Brand
@@ -428,7 +428,7 @@ const DashboardPage: React.FC = () => {
                         {brief.status === 'completed' || brief.status === 'strategy_completed' ? (
                           <Link
                             to={`/results/${brief.id}`}
-                            className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-sm font-medium rounded-lg hover:shadow-md transform hover:scale-105 transition-all"
+                            className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-cyan-500 to-yellow-500 text-white text-sm font-medium rounded-lg hover:shadow-md transform hover:scale-105 transition-all"
                           >
                             View Brand
                             <ArrowRightIcon className="ml-2 h-4 w-4" />
@@ -457,7 +457,7 @@ const DashboardPage: React.FC = () => {
                           <span>~2 min remaining</span>
                         </div>
                         <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                          <div className="bg-gradient-to-r from-blue-600 to-purple-600 h-2 rounded-full animate-pulse" 
+                          <div className="bg-gradient-to-r from-cyan-500 to-yellow-500 h-2 rounded-full animate-pulse" 
                                style={{ width: '60%' }}></div>
                         </div>
                       </div>
@@ -472,7 +472,7 @@ const DashboardPage: React.FC = () => {
 
       {/* Pro Tips Section */}
       {briefs.length > 0 && briefs.length < 3 && (
-        <div className="mt-8 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-6 border border-blue-100">
+        <div className="mt-8 bg-gradient-to-r from-cyan-50 to-yellow-50 rounded-xl p-6 border border-blue-100">
           <div className="flex items-start space-x-4">
             <div className="p-2 bg-blue-100 rounded-lg">
               <StarIcon className="h-5 w-5 text-blue-600" />
