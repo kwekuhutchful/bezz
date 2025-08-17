@@ -151,6 +151,38 @@ func (s *BrandBriefService) DeleteBrief(ctx context.Context, briefID, userID str
 	return err
 }
 
+// RetryProcessing retries processing for a failed brief
+func (s *BrandBriefService) RetryProcessing(ctx context.Context, briefID string) error {
+	log.Printf("🔄 RETRY SERVICE: Starting retry for brief %s", briefID)
+
+	// Get the brief
+	brief, err := s.GetBrief(ctx, briefID)
+	if err != nil {
+		log.Printf("❌ RETRY SERVICE: Failed to get brief %s: %v", briefID, err)
+		return fmt.Errorf("failed to get brief: %w", err)
+	}
+
+	// Check if brief is in a retryable state
+	if brief.Status != "failed" && brief.Status != "ads_failed" && brief.Status != "images_failed" {
+		log.Printf("❌ RETRY SERVICE: Brief %s is not in a retryable state (current status: %s)", briefID, brief.Status)
+		return fmt.Errorf("brief is not in a retryable state: %s", brief.Status)
+	}
+
+	log.Printf("✅ RETRY SERVICE: Brief %s is retryable (status: %s)", briefID, brief.Status)
+
+	// Start processing in a goroutine with a fresh background context
+	// We can't use the HTTP request context because it gets cancelled when the request completes
+	go func() {
+		// Create a fresh background context for the retry processing
+		backgroundCtx := context.Background()
+		log.Printf("🔄 RETRY SERVICE: Starting background processing for brief %s", briefID)
+		s.processBrief(backgroundCtx, brief)
+	}()
+
+	log.Printf("🚀 RETRY SERVICE: Started retry processing for brief %s", briefID)
+	return nil
+}
+
 // processBrief processes a brand brief using the new GPT pipeline
 func (s *BrandBriefService) processBrief(ctx context.Context, brief *models.BrandBrief) {
 	log.Printf("🧠 AI PIPELINE: Starting processing for brief %s", brief.ID)
@@ -170,9 +202,31 @@ func (s *BrandBriefService) processBrief(ctx context.Context, brief *models.Bran
 
 	log.Printf("✅ AI PIPELINE: Strategy generated successfully for brief %s", brief.ID)
 
+	// Generate brand name alternatives
+	log.Printf("🏷️ AI PIPELINE: Starting brand name generation...")
+	brandNames, err := s.aiService.GenerateBrandNames(ctx, brief, strategy)
+	if err != nil {
+		log.Printf("⚠️ AI PIPELINE: Brand name generation failed, continuing without alternatives: %v", err)
+		brandNames = []models.BrandNameSuggestion{} // Graceful degradation
+	}
+
+	log.Printf("✅ AI PIPELINE: Generated %d brand name suggestions", len(brandNames))
+
+	// Generate brand identity (logo + colors)
+	log.Printf("🎨 AI PIPELINE: Starting brand identity generation...")
+	brandIdentity, err := s.aiService.GenerateBrandIdentity(ctx, strategy, brief.CompanyName, brief.Sector, brief.TargetAudience)
+	if err != nil {
+		log.Printf("⚠️ AI PIPELINE: Brand identity generation failed, continuing without identity: %v", err)
+		brandIdentity = nil // Graceful degradation
+	}
+
+	if brandIdentity != nil {
+		log.Printf("✅ AI PIPELINE: Generated brand identity with %d colors", len(brandIdentity.ColorPalette))
+	}
+
 	// Update status to strategy completed
-	log.Printf("💾 AI PIPELINE: Saving strategy to Firestore...")
-	s.updateBriefStatusWithStrategy(ctx, brief.ID, "strategy_completed", strategy)
+	log.Printf("💾 AI PIPELINE: Saving strategy, brand names, and identity to Firestore...")
+	s.updateBriefStatusWithStrategyNamesAndIdentity(ctx, brief.ID, "strategy_completed", strategy, brandNames, brandIdentity)
 
 	// Generate ad campaigns
 	log.Printf("🎨 AI PIPELINE: Starting ad campaign generation...")
@@ -187,7 +241,7 @@ func (s *BrandBriefService) processBrief(ctx context.Context, brief *models.Bran
 
 	// Generate images for ads
 	log.Printf("🖼️ AI PIPELINE: Starting image generation...")
-	ads, err := s.aiService.RenderImages(ctx, adSpecs.Ads, brief.CompanyName)
+	ads, err := s.aiService.RenderImages(ctx, adSpecs.Ads, brief.CompanyName, brief.Sector)
 	if err != nil {
 		log.Printf("❌ AI PIPELINE: Image generation failed for brief %s: %v", brief.ID, err)
 		s.updateBriefStatus(ctx, brief.ID, "images_failed")
@@ -216,6 +270,41 @@ func (s *BrandBriefService) updateBriefStatusWithStrategy(ctx context.Context, b
 	_, err := s.db.Collection("briefs").Doc(briefID).Update(ctx, updates)
 	if err != nil {
 		log.Printf("Failed to update brief %s with strategy: %v", briefID, err)
+	}
+}
+
+// updateBriefStatusWithStrategyAndNames updates brief with strategy data and brand names
+func (s *BrandBriefService) updateBriefStatusWithStrategyAndNames(ctx context.Context, briefID, status string, strategy *models.BrandStrategy, brandNames []models.BrandNameSuggestion) {
+	updates := []firestore.Update{
+		{Path: "status", Value: status},
+		{Path: "results.strategy", Value: strategy},
+		{Path: "results.brandNames", Value: brandNames},
+		{Path: "updatedAt", Value: time.Now()},
+	}
+
+	_, err := s.db.Collection("briefs").Doc(briefID).Update(ctx, updates)
+	if err != nil {
+		log.Printf("Failed to update brief %s with strategy and brand names: %v", briefID, err)
+	}
+}
+
+// updateBriefStatusWithStrategyNamesAndIdentity updates brief with strategy, names, and brand identity
+func (s *BrandBriefService) updateBriefStatusWithStrategyNamesAndIdentity(ctx context.Context, briefID, status string, strategy *models.BrandStrategy, brandNames []models.BrandNameSuggestion, brandIdentity *models.BrandIdentity) {
+	updates := []firestore.Update{
+		{Path: "status", Value: status},
+		{Path: "results.strategy", Value: strategy},
+		{Path: "results.brandNames", Value: brandNames},
+		{Path: "updatedAt", Value: time.Now()},
+	}
+
+	// Only add brand identity if it was generated successfully
+	if brandIdentity != nil {
+		updates = append(updates, firestore.Update{Path: "results.brandIdentity", Value: brandIdentity})
+	}
+
+	_, err := s.db.Collection("briefs").Doc(briefID).Update(ctx, updates)
+	if err != nil {
+		log.Printf("Failed to update brief %s with strategy, names, and identity: %v", briefID, err)
 	}
 }
 

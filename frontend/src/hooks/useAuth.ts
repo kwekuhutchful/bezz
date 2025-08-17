@@ -74,13 +74,21 @@ export function useAuth(): AuthState & AuthActions {
   }, [state.user])
 
   const signIn = async (email: string, password: string): Promise<void> => {
+    console.log('🔐 AUTH HOOK: Starting signIn process...');
     setState(prev => ({ ...prev, loading: true, error: null }))
     
     try {
+      console.log('🔐 AUTH HOOK: Calling backend signin API...');
+      console.log('🔐 AUTH HOOK: API URL:', import.meta.env.VITE_API_URL || 'http://localhost:8080');
+      
       const response = await authAPI.signin({ email, password })
+      
+      console.log('🔐 AUTH HOOK: Backend response received:', response);
       
       if (response.success) {
         const { token, user } = response.data
+        console.log('🔐 AUTH HOOK: Authentication successful, setting user state...');
+        
         setAuthToken(token)
         localStorage.setItem('userData', JSON.stringify(user))
         
@@ -90,17 +98,45 @@ export function useAuth(): AuthState & AuthActions {
           error: null,
         })
         
-        toast.success('Successfully signed in!')
+        console.log('🔐 AUTH HOOK: User state set, signIn complete');
+        // Don't show success toast here - let the LoginPage handle it
       } else {
+        console.log('🔐 AUTH HOOK: Backend returned error:', response.error);
         throw new Error(response.error || 'Sign in failed')
       }
     } catch (error: any) {
-      const errorMessage = error.response?.data?.error || error.message || 'Sign in failed'
+      console.error('🔐 AUTH HOOK: Authentication error:', error);
+      
+      let errorMessage = 'Sign in failed';
+      
+      // Handle different error sources
+      if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      // Handle Firebase-specific errors
+      if (errorMessage.includes('INVALID_LOGIN_CREDENTIALS')) {
+        errorMessage = 'Invalid email or password';
+      } else if (errorMessage.includes('auth/user-not-found')) {
+        errorMessage = 'No account found with this email';
+      } else if (errorMessage.includes('auth/wrong-password')) {
+        errorMessage = 'Incorrect password';
+      } else if (errorMessage.includes('auth/too-many-requests')) {
+        errorMessage = 'Too many failed attempts. Please try again later';
+      }
+      
       setState(prev => ({
         ...prev,
+        user: null, // Ensure user is null on failed auth
         loading: false,
         error: errorMessage,
       }))
+      
+      console.log('🔐 AUTH HOOK: Throwing error to LoginPage:', errorMessage);
       throw new Error(errorMessage)
     }
   }

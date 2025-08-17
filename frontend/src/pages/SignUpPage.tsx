@@ -52,7 +52,7 @@ export default function SignUpPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex">
       {/* Left Side - Sign Up Form */}
-      <div className="flex-1 flex items-center justify-center px-4 sm:px-6 lg:px-8">
+      <div className="flex-1 flex items-center justify-center px-4 sm:px-6 lg:px-8 py-8">
         <div className="max-w-md w-full">
           {/* Logo */}
           <Link to="/" className="flex flex-col items-center justify-center mb-8">
@@ -71,13 +71,13 @@ export default function SignUpPage() {
           </Link>
 
           {/* Form Container */}
-          <div className="bg-white rounded-2xl shadow-xl p-8">
-            <div className="text-center mb-8">
+          <div className="bg-white rounded-2xl shadow-xl p-6">
+            <div className="text-center mb-6">
               <h2 className="text-3xl font-bold text-gray-900 mb-2">Create your account</h2>
               <p className="text-gray-600">Join 44,000+ African entrepreneurs building brands with AI</p>
             </div>
 
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
               {/* Full Name */}
               <div>
                 <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 mb-2">
@@ -248,33 +248,41 @@ export default function SignUpPage() {
       </div>
 
       {/* Right Side - Benefits */}
-      <div className="hidden lg:flex flex-1 bg-gradient-to-br from-cyan-500 to-yellow-500 items-center justify-center px-8">
-        <div className="max-w-lg">
+      <div className="hidden lg:flex flex-1 bg-gradient-to-br from-gray-900 via-gray-800 to-slate-900 items-center justify-center px-8 relative overflow-hidden">
+        {/* Subtle geometric pattern overlay */}
+        <div className="absolute inset-0 opacity-5">
+          <div className="absolute top-20 right-20 w-32 h-32 border border-white rounded-full"></div>
+          <div className="absolute bottom-32 left-16 w-24 h-24 border border-white rounded-full"></div>
+          <div className="absolute top-1/2 right-1/3 w-16 h-16 border border-white rounded-full"></div>
+        </div>
+        <div className="max-w-lg relative z-10">
           <h3 className="text-3xl font-bold text-white mb-6">
             Start building your brand in minutes
           </h3>
-          <p className="text-xl text-blue-100 mb-8">
-            Join thousands of African entrepreneurs who are creating professional brands with AI
+          <p className="text-xl text-gray-300 mb-8">
+            Join thousands of African entrepreneurs who are creating professional brands with <span className="text-cyan-400">AI</span>
           </p>
           
           <div className="space-y-4">
             {benefits.map((benefit, index) => (
               <div key={index} className="flex items-start">
-                <CheckCircleIcon className="h-6 w-6 text-green-400 mr-3 flex-shrink-0 mt-0.5" />
-                <span className="text-white">{benefit}</span>
+                <CheckCircleIcon className="h-6 w-6 text-cyan-400 mr-3 flex-shrink-0 mt-0.5" />
+                <span className="text-gray-200">{benefit}</span>
               </div>
             ))}
           </div>
 
-          <div className="mt-12 bg-white/10 backdrop-blur-sm rounded-xl p-6">
-            <p className="text-white italic mb-4">
+          <div className="mt-12 bg-gradient-to-r from-gray-800/90 to-slate-800/90 backdrop-blur-sm rounded-xl p-6 border border-gray-700/50 shadow-2xl">
+            <p className="text-gray-200 italic mb-4">
               "Bezz AI helped me create a professional brand identity in just 5 minutes. What would have cost me $5,000 with an agency, I got for free!"
             </p>
             <div className="flex items-center">
-              <div className="w-10 h-10 bg-white/20 rounded-full mr-3"></div>
+              <div className="w-10 h-10 bg-gradient-to-br from-cyan-400/20 to-blue-500/20 rounded-full mr-3 flex items-center justify-center">
+                <div className="w-6 h-6 bg-cyan-400 rounded-full"></div>
+              </div>
               <div>
                 <p className="text-white font-semibold">Sarah Okafor</p>
-                <p className="text-blue-200 text-sm">Founder, TechHub Lagos</p>
+                <p className="text-gray-400 text-sm">Founder, TechHub Lagos</p>
               </div>
             </div>
           </div>

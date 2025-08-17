@@ -29,10 +29,13 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 const PublicRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuthContext();
 
+  // Show loading spinner during auth state determination
   if (loading) {
     return <LoadingSpinner />;
   }
 
+  // Only redirect if user is authenticated AND not in the middle of a login process
+  // This prevents premature redirects during login attempts
   if (user) {
     return <Navigate to="/dashboard" replace />;
   }

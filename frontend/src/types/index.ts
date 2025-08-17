@@ -22,6 +22,7 @@ export interface BrandBrief {
   id: string;
   userId: string;
   companyName: string;
+  businessDescription: string;
   sector: string;
   tone: string;
   targetAudience: string;
@@ -36,6 +37,8 @@ export interface BrandBrief {
 export interface BrandResults {
   brief: ProcessedBrief;
   strategy: BrandStrategy;
+  brandNames?: BrandNameSuggestion[];
+  brandIdentity?: BrandIdentity;
   ads: AdCampaign[];
   videoAds?: VideoAd[];
 }
@@ -54,6 +57,7 @@ export interface ProcessedBrief {
 export interface BrandStrategy {
   positioning: string;
   valueProposition: string;
+  tagline: string;
   brandPillars: string[];
   messagingFramework: {
     primaryMessage: string;
@@ -113,9 +117,29 @@ export interface VideoScene {
   voiceover: string;
 }
 
+export interface BrandNameSuggestion {
+  name: string;
+  rationale: string;
+}
+
+export interface BrandIdentity {
+  logoConcept: string;
+  colorPalette: Color[];
+  logoImageUrl?: string;
+  logoObjectName?: string;
+}
+
+export interface Color {
+  name: string;
+  hex: string;
+  usage: 'primary' | 'secondary' | 'accent';
+  psychology: string;
+}
+
 // Form types
 export interface BrandBriefForm {
   companyName: string;
+  businessDescription: string;
   sector: string;
   tone: string;
   targetAudience: string;

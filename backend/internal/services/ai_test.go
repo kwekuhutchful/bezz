@@ -9,7 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sashabaranov/go-openai"
+	openai "github.com/openai/openai-go/v2"
+	"github.com/openai/openai-go/v2/shared"
 
 	"bezz-backend/internal/models"
 	"bezz-backend/internal/prompts"
@@ -19,20 +20,60 @@ import (
 
 // OpenAIClientInterface defines the interface for OpenAI client methods we use
 type OpenAIClientInterface interface {
-	CreateChatCompletion(ctx context.Context, request openai.ChatCompletionRequest) (openai.ChatCompletionResponse, error)
+	Chat() ChatServiceInterface
+}
+
+// ChatServiceInterface defines the interface for chat completions
+type ChatServiceInterface interface {
+	Completions() ChatCompletionsServiceInterface
+}
+
+// ChatCompletionsServiceInterface defines the interface for chat completions
+type ChatCompletionsServiceInterface interface {
+	New(ctx context.Context, params openai.ChatCompletionNewParams) (*openai.ChatCompletion, error)
+}
+
+// MockChatCompletionsService is a mock implementation of the chat completions service
+type MockChatCompletionsService struct {
+	MockResponse *openai.ChatCompletion
+	MockError    error
+}
+
+func (m *MockChatCompletionsService) New(ctx context.Context, params openai.ChatCompletionNewParams) (*openai.ChatCompletion, error) {
+	if m.MockError != nil {
+		return nil, m.MockError
+	}
+	return m.MockResponse, nil
+}
+
+// MockChatService is a mock implementation of the chat service
+type MockChatService struct {
+	completions *MockChatCompletionsService
+}
+
+func (m *MockChatService) Completions() ChatCompletionsServiceInterface {
+	return m.completions
 }
 
 // MockOpenAIClient is a mock implementation of the OpenAI client interface
 type MockOpenAIClient struct {
-	MockResponse openai.ChatCompletionResponse
-	MockError    error
+	chat *MockChatService
 }
 
-func (m *MockOpenAIClient) CreateChatCompletion(ctx context.Context, request openai.ChatCompletionRequest) (openai.ChatCompletionResponse, error) {
-	if m.MockError != nil {
-		return openai.ChatCompletionResponse{}, m.MockError
+func (m *MockOpenAIClient) Chat() ChatServiceInterface {
+	return m.chat
+}
+
+// NewMockOpenAIClient creates a new mock client with the given response
+func NewMockOpenAIClient(response *openai.ChatCompletion, err error) *MockOpenAIClient {
+	return &MockOpenAIClient{
+		chat: &MockChatService{
+			completions: &MockChatCompletionsService{
+				MockResponse: response,
+				MockError:    err,
+			},
+		},
 	}
-	return m.MockResponse, nil
 }
 
 // TestableAIService is a version of AIService that accepts an interface for testing
@@ -44,10 +85,11 @@ func NewTestableAIService(client OpenAIClientInterface) *TestableAIService {
 	return &TestableAIService{client: client}
 }
 
-// Copy the methods from AIService but using our interface
+// ProcessBriefWithGPT processes a brand brief using GPT (test version)
 func (s *TestableAIService) ProcessBriefWithGPT(ctx context.Context, brief *models.BrandBrief) (*models.BriefGPTResponse, error) {
 	prompt := fmt.Sprintf(prompts.BriefGPTPrompt,
 		brief.CompanyName,
+		brief.BusinessDescription,
 		brief.Sector,
 		brief.TargetAudience,
 		brief.Tone,
@@ -55,21 +97,19 @@ func (s *TestableAIService) ProcessBriefWithGPT(ctx context.Context, brief *mode
 		brief.AdditionalInfo,
 	)
 
-	resp, err := s.client.CreateChatCompletion(ctx, openai.ChatCompletionRequest{
-		Model: openai.GPT4,
-		Messages: []openai.ChatCompletionMessage{
-			{
-				Role:    openai.ChatMessageRoleSystem,
-				Content: "You are Brief-GPT, an expert at structuring brand information. Always respond with valid JSON only.",
-			},
-			{
-				Role:    openai.ChatMessageRoleUser,
-				Content: prompt,
-			},
+	// Create parameters using the new SDK structure
+	temperature := float64(0.3)
+	params := openai.ChatCompletionNewParams{
+		Model: shared.ChatModelGPT5,
+		Messages: []openai.ChatCompletionMessageParamUnion{
+			openai.SystemMessage("You are Brief-GPT, an expert at structuring brand information. Always respond with valid JSON only."),
+			openai.UserMessage(prompt),
 		},
-		Temperature: 0.3,
-		MaxTokens:   800,
-	})
+		MaxTokens:   openai.Int(int64(800)),
+		Temperature: openai.Float(temperature),
+	}
+
+	resp, err := s.client.Chat().Completions().New(ctx, params)
 
 	if err != nil {
 		return nil, fmt.Errorf("Brief-GPT API call failed: %w", err)
@@ -99,21 +139,19 @@ func (s *TestableAIService) GenerateAds(ctx context.Context, strategy *models.Br
 
 	prompt := fmt.Sprintf(prompts.CreativeDirectorGPTPrompt, string(strategyJSON))
 
-	resp, err := s.client.CreateChatCompletion(ctx, openai.ChatCompletionRequest{
-		Model: openai.GPT4,
-		Messages: []openai.ChatCompletionMessage{
-			{
-				Role:    openai.ChatMessageRoleSystem,
-				Content: "You are Creative-Director-GPT, an expert at creating compelling ad campaigns. Always respond with valid JSON only.",
-			},
-			{
-				Role:    openai.ChatMessageRoleUser,
-				Content: prompt,
-			},
+	// Create parameters using the new SDK structure
+	temperature := float64(0.7)
+	params := openai.ChatCompletionNewParams{
+		Model: shared.ChatModelGPT5,
+		Messages: []openai.ChatCompletionMessageParamUnion{
+			openai.SystemMessage("You are Creative-Director-GPT, an expert at creating compelling ad campaigns. Always respond with valid JSON only."),
+			openai.UserMessage(prompt),
 		},
-		Temperature: 0.7,
-		MaxTokens:   1500,
-	})
+		MaxTokens:   openai.Int(int64(1500)),
+		Temperature: openai.Float(temperature),
+	}
+
+	resp, err := s.client.Chat().Completions().New(ctx, params)
 
 	if err != nil {
 		return nil, fmt.Errorf("Creative-Director-GPT API call failed: %w", err)
@@ -143,31 +181,33 @@ func TestProcessBriefWithGPT_Success(t *testing.T) {
 	}
 
 	responseJSON, _ := json.Marshal(mockBriefResponse)
-	mockClient := &MockOpenAIClient{
-		MockResponse: openai.ChatCompletionResponse{
-			Choices: []openai.ChatCompletionChoice{
-				{
-					Message: openai.ChatCompletionMessage{
-						Content: string(responseJSON),
-					},
+
+	// Create mock response using the new SDK structure
+	mockResponse := &openai.ChatCompletion{
+		Choices: []openai.ChatCompletionChoice{
+			{
+				Message: openai.ChatCompletionMessage{
+					Content: string(responseJSON),
 				},
 			},
 		},
 	}
 
+	mockClient := NewMockOpenAIClient(mockResponse, nil)
 	testService := NewTestableAIService(mockClient)
 
 	// Test brief
 	brief := &models.BrandBrief{
-		ID:             "test-brief-id",
-		CompanyName:    "TechCorp",
-		Sector:         "Technology",
-		TargetAudience: "Tech professionals",
-		Tone:           "Professional",
-		Language:       "en",
-		AdditionalInfo: "Focus on innovation",
-		CreatedAt:      time.Now(),
-		UpdatedAt:      time.Now(),
+		ID:                  "test-brief-id",
+		CompanyName:         "TechCorp",
+		BusinessDescription: "We provide cloud-based software solutions for small businesses",
+		Sector:              "Technology",
+		TargetAudience:      "Tech professionals",
+		Tone:                "Professional",
+		Language:            "en",
+		AdditionalInfo:      "Focus on innovation",
+		CreatedAt:           time.Now(),
+		UpdatedAt:           time.Now(),
 	}
 
 	ctx := context.Background()
@@ -187,22 +227,20 @@ func TestProcessBriefWithGPT_Success(t *testing.T) {
 }
 
 func TestProcessBriefWithGPT_Error(t *testing.T) {
-	mockClient := &MockOpenAIClient{
-		MockError: errors.New("API error"),
-	}
-
+	mockClient := NewMockOpenAIClient(nil, errors.New("API error"))
 	testService := NewTestableAIService(mockClient)
 
 	brief := &models.BrandBrief{
-		ID:             "test-brief-id",
-		CompanyName:    "TechCorp",
-		Sector:         "Technology",
-		TargetAudience: "Tech professionals",
-		Tone:           "Professional",
-		Language:       "en",
-		AdditionalInfo: "Focus on innovation",
-		CreatedAt:      time.Now(),
-		UpdatedAt:      time.Now(),
+		ID:                  "test-brief-id",
+		CompanyName:         "TechCorp",
+		BusinessDescription: "We provide cloud-based software solutions for small businesses",
+		Sector:              "Technology",
+		TargetAudience:      "Tech professionals",
+		Tone:                "Professional",
+		Language:            "en",
+		AdditionalInfo:      "Focus on innovation",
+		CreatedAt:           time.Now(),
+		UpdatedAt:           time.Now(),
 	}
 
 	ctx := context.Background()
@@ -214,39 +252,39 @@ func TestProcessBriefWithGPT_Error(t *testing.T) {
 }
 
 func TestGenerateAds_Success(t *testing.T) {
-	mockClient := &MockOpenAIClient{
-		MockResponse: openai.ChatCompletionResponse{
-			Choices: []openai.ChatCompletionChoice{
-				{
-					Message: openai.ChatCompletionMessage{
-						Content: `{
-							"ads": [
-								{
-									"id": 1,
-									"headline": "Transform Your Business Today",
-									"body": "Discover innovative solutions that drive growth and success for your company.",
-									"dalle_prompt": "Modern office setting with diverse professionals collaborating"
-								},
-								{
-									"id": 2,
-									"headline": "Unlock Your Potential",
-									"body": "Join thousands of successful businesses already using our platform.",
-									"dalle_prompt": "Upward trending graph with business people celebrating success"
-								},
-								{
-									"id": 3,
-									"headline": "Start Your Journey",
-									"body": "Take the first step towards transforming your business operations.",
-									"dalle_prompt": "Professional handshake sealing a business deal"
-								}
-							]
-						}`,
-					},
+	// Create mock response using the new SDK structure
+	mockResponse := &openai.ChatCompletion{
+		Choices: []openai.ChatCompletionChoice{
+			{
+				Message: openai.ChatCompletionMessage{
+					Content: `{
+						"ads": [
+							{
+								"id": 1,
+								"headline": "Transform Your Business Today",
+								"body": "Discover innovative solutions that drive growth and success for your company.",
+								"dalle_prompt": "Modern office setting with diverse professionals collaborating"
+							},
+							{
+								"id": 2,
+								"headline": "Unlock Your Potential",
+								"body": "Join thousands of successful businesses already using our platform.",
+								"dalle_prompt": "Upward trending graph with business people celebrating success"
+							},
+							{
+								"id": 3,
+								"headline": "Start Your Journey",
+								"body": "Take the first step towards transforming your business operations.",
+								"dalle_prompt": "Professional handshake sealing a business deal"
+							}
+						]
+					}`,
 				},
 			},
 		},
 	}
 
+	mockClient := NewMockOpenAIClient(mockResponse, nil)
 	service := NewTestableAIService(mockClient)
 
 	strategy := &models.BrandStrategy{
@@ -270,10 +308,7 @@ func TestGenerateAds_Success(t *testing.T) {
 }
 
 func TestGenerateAds_Error(t *testing.T) {
-	mockClient := &MockOpenAIClient{
-		MockError: errors.New("API error"),
-	}
-
+	mockClient := NewMockOpenAIClient(nil, errors.New("API error"))
 	service := NewTestableAIService(mockClient)
 
 	strategy := &models.BrandStrategy{
@@ -288,18 +323,18 @@ func TestGenerateAds_Error(t *testing.T) {
 }
 
 func TestGenerateAds_InvalidJSON(t *testing.T) {
-	mockClient := &MockOpenAIClient{
-		MockResponse: openai.ChatCompletionResponse{
-			Choices: []openai.ChatCompletionChoice{
-				{
-					Message: openai.ChatCompletionMessage{
-						Content: "invalid json response",
-					},
+	// Create mock response with invalid JSON
+	mockResponse := &openai.ChatCompletion{
+		Choices: []openai.ChatCompletionChoice{
+			{
+				Message: openai.ChatCompletionMessage{
+					Content: "invalid json response",
 				},
 			},
 		},
 	}
 
+	mockClient := NewMockOpenAIClient(mockResponse, nil)
 	service := NewTestableAIService(mockClient)
 
 	strategy := &models.BrandStrategy{

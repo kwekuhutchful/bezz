@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthContext } from '@/contexts/AuthContext';
-import api, { endpoints } from '@/lib/api';
+import api, { endpoints, briefAPI } from '@/lib/api';
 import { BrandBrief } from '@/types';
 import { 
   PlusIcon, 
@@ -30,6 +30,9 @@ const DashboardPage: React.FC = () => {
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'processing' | 'completed' | 'failed'>('all');
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'name'>('newest');
   const [expandedBriefs, setExpandedBriefs] = useState<Set<string>>(new Set());
+  const [retryingBriefs, setRetryingBriefs] = useState<Set<string>>(new Set());
+  const [nowTs, setNowTs] = useState<number>(Date.now());
+  const PROCESSING_SLA_SEC = 5 * 60; // 5 minutes SLA
 
   useEffect(() => {
     fetchBriefs();
@@ -46,6 +49,14 @@ const DashboardPage: React.FC = () => {
 
       return () => clearInterval(interval);
     }
+  }, [briefs]);
+
+  // Local 1s ticker to update countdown/progress UI while processing
+  useEffect(() => {
+    const hasProcessingBriefs = briefs.some(brief => brief.status === 'processing');
+    if (!hasProcessingBriefs) return;
+    const t = setInterval(() => setNowTs(Date.now()), 1000);
+    return () => clearInterval(t);
   }, [briefs]);
 
   const fetchBriefs = async () => {
@@ -113,6 +124,29 @@ const DashboardPage: React.FC = () => {
       }
       return newSet;
     });
+  };
+
+  const handleRetryBrief = async (briefId: string) => {
+    try {
+      setRetryingBriefs(prev => new Set(prev).add(briefId));
+      
+      await briefAPI.retry(briefId);
+      
+      toast.success('Retry started! Your brand generation is now processing.');
+      
+      // Refresh the brief list to show updated status
+      await fetchBriefs();
+    } catch (error: any) {
+      console.error('Failed to retry brief:', error);
+      const errorMessage = error.response?.data?.error || 'Failed to retry. Please try again.';
+      toast.error(errorMessage);
+    } finally {
+      setRetryingBriefs(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(briefId);
+        return newSet;
+      });
+    }
   };
 
   const filteredBriefs = briefs
@@ -349,123 +383,139 @@ const DashboardPage: React.FC = () => {
           </div>
         ) : (
           <div className="divide-y divide-gray-100">
-            {filteredBriefs.map((brief) => (
-              <div
-                key={brief.id}
-                className="p-6 hover:bg-gray-50 transition-all group"
-              >
-                <div className="flex items-start space-x-4">
-                  {/* Status Icon */}
-                  <div className="flex-shrink-0 pt-1">
-                    {getStatusIcon(brief.status)}
-                  </div>
-                  
-                  {/* Brief Content */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1">
-                        {/* Header Row - Company, Status, Date */}
-                        <div className="flex items-start justify-between mb-3">
-                          <div>
-                            <h3 className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors mb-1">
-                              {brief.companyName}
-                            </h3>
-                            <div className="flex items-center gap-3">
-                              <span className={getStatusBadge(brief.status)}>
-                                {brief.status}
-                              </span>
-                              <span className="text-sm text-gray-500">
-                                {formatDate(brief.createdAt)}
-                              </span>
+            {filteredBriefs.map((brief) => {
+              const startedAtMs = new Date(brief.createdAt).getTime();
+              const elapsedSec = Math.max(0, Math.floor((nowTs - startedAtMs) / 1000));
+              const remainingSec = Math.max(0, PROCESSING_SLA_SEC - elapsedSec);
+              const mins = Math.floor(remainingSec / 60);
+              const secs = remainingSec % 60;
+              const percent = Math.min(100, Math.floor((elapsedSec / PROCESSING_SLA_SEC) * 100));
+
+              return (
+                <div key={brief.id} className="p-6 hover:bg-gray-50 transition-all group">
+                  <div className="flex items-start space-x-4">
+                    {/* Status Icon */}
+                    <div className="flex-shrink-0 pt-1">
+                      {getStatusIcon(brief.status)}
+                    </div>
+                    
+                    {/* Brief Content */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1">
+                          {/* Header Row - Company, Status, Date */}
+                          <div className="flex items-start justify-between mb-3">
+                            <div>
+                              <h3 className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors mb-1">
+                                {brief.companyName}
+                              </h3>
+                              <div className="flex items-center gap-3">
+                                <span className={getStatusBadge(brief.status)}>
+                                  {brief.status}
+                                </span>
+                                <span className="text-sm text-gray-500">
+                                  {formatDate(brief.createdAt)}
+                                </span>
+                              </div>
                             </div>
                           </div>
+                          
+                          {/* Meta Information */}
+                          <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 mb-3">
+                            <span className="flex items-center">
+                              <ChartBarIcon className="h-4 w-4 mr-1 text-gray-400" />
+                              {brief.sector}
+                            </span>
+                            <span className="flex items-center">
+                              <SparklesIcon className="h-4 w-4 mr-1 text-gray-400" />
+                              {brief.tone}
+                            </span>
+                            <span className="flex items-center">
+                              <UserGroupIcon className="h-4 w-4 mr-1 text-gray-400" />
+                              Target: {brief.targetAudience.length > 80 ? brief.targetAudience.substring(0, 80) + '...' : brief.targetAudience}
+                            </span>
+                          </div>
+
+                          {/* Additional Info if exists */}
+                          {brief.additionalInfo && (
+                            <div className="relative">
+                              <p className={`text-sm text-gray-500 ${!expandedBriefs.has(brief.id) ? 'line-clamp-2' : ''}`}>
+                                {brief.additionalInfo}
+                              </p>
+                              {/* Only show "See more" if content is actually truncated */}
+                              {(() => {
+                                // Check if text would be truncated (rough estimate: 2 lines ≈ 150 chars)
+                                const isTruncated = brief.additionalInfo.length > 150;
+                                return isTruncated && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      toggleBriefExpanded(brief.id);
+                                    }}
+                                    className="text-sm text-blue-600 hover:text-blue-700 font-medium mt-1"
+                                  >
+                                    {expandedBriefs.has(brief.id) ? 'See less' : 'See more'}
+                                  </button>
+                                );
+                              })()}
+                            </div>
+                          )}
                         </div>
                         
-                        {/* Meta Information */}
-                        <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 mb-3">
-                          <span className="flex items-center">
-                            <ChartBarIcon className="h-4 w-4 mr-1 text-gray-400" />
-                            {brief.sector}
-                          </span>
-                          <span className="flex items-center">
-                            <SparklesIcon className="h-4 w-4 mr-1 text-gray-400" />
-                            {brief.tone}
-                          </span>
-                          <span className="flex items-center">
-                            <UserGroupIcon className="h-4 w-4 mr-1 text-gray-400" />
-                            Target: {brief.targetAudience.length > 80 ? brief.targetAudience.substring(0, 80) + '...' : brief.targetAudience}
-                          </span>
+                        {/* Actions */}
+                        <div className="flex-shrink-0 self-center">
+                          {brief.status === 'completed' || brief.status === 'strategy_completed' ? (
+                            <Link
+                              to={`/results/${brief.id}`}
+                              className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-cyan-500 to-yellow-500 text-white text-sm font-medium rounded-lg hover:shadow-md transform hover:scale-105 transition-all"
+                            >
+                              View Brand
+                              <ArrowRightIcon className="ml-2 h-4 w-4" />
+                            </Link>
+                          ) : brief.status === 'processing' ? (
+                            <div className="inline-flex items-center px-4 py-2 bg-yellow-100 text-yellow-700 text-sm font-medium rounded-lg">
+                              <LoadingSpinner size="sm" className="mr-2" />
+                              Processing
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => handleRetryBrief(brief.id)}
+                              disabled={retryingBriefs.has(brief.id)}
+                              className="inline-flex items-center px-4 py-2 bg-red-100 text-red-700 text-sm font-medium rounded-lg hover:bg-red-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {retryingBriefs.has(brief.id) ? (
+                                <>
+                                  <LoadingSpinner size="sm" className="mr-2" />
+                                  Retrying...
+                                </>
+                              ) : (
+                                'Retry'
+                              )}
+                            </button>
+                          )}
                         </div>
+                      </div>
 
-                        {/* Additional Info if exists */}
-                        {brief.additionalInfo && (
-                          <div className="relative">
-                            <p className={`text-sm text-gray-500 ${!expandedBriefs.has(brief.id) ? 'line-clamp-2' : ''}`}>
-                              {brief.additionalInfo}
-                            </p>
-                            {/* Only show "See more" if content is actually truncated */}
-                            {(() => {
-                              // Check if text would be truncated (rough estimate: 2 lines ≈ 150 chars)
-                              const isTruncated = brief.additionalInfo.length > 150;
-                              return isTruncated && (
-                                <button
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    toggleBriefExpanded(brief.id);
-                                  }}
-                                  className="text-sm text-blue-600 hover:text-blue-700 font-medium mt-1"
-                                >
-                                  {expandedBriefs.has(brief.id) ? 'See less' : 'See more'}
-                                </button>
-                              );
-                            })()}
+                      {/* Progress Bar for Processing Items */}
+                      {brief.status === 'processing' && (
+                        <div className="mt-4">
+                          <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
+                            <span>Generating your brand assets...</span>
+                            <span>
+                              {mins}:{secs.toString().padStart(2,'0')} remaining
+                            </span>
                           </div>
-                        )}
-                      </div>
-                      
-                      {/* Actions */}
-                      <div className="flex-shrink-0 self-center">
-                        {brief.status === 'completed' || brief.status === 'strategy_completed' ? (
-                          <Link
-                            to={`/results/${brief.id}`}
-                            className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-cyan-500 to-yellow-500 text-white text-sm font-medium rounded-lg hover:shadow-md transform hover:scale-105 transition-all"
-                          >
-                            View Brand
-                            <ArrowRightIcon className="ml-2 h-4 w-4" />
-                          </Link>
-                        ) : brief.status === 'processing' ? (
-                          <div className="inline-flex items-center px-4 py-2 bg-yellow-100 text-yellow-700 text-sm font-medium rounded-lg">
-                            <LoadingSpinner size="sm" className="mr-2" />
-                            Processing
+                          <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                            <div className="bg-gradient-to-r from-cyan-500 to-yellow-500 h-2 rounded-full animate-pulse" 
+                                 style={{ width: `${percent}%` }}></div>
                           </div>
-                        ) : (
-                          <button
-                            onClick={() => fetchBriefs()}
-                            className="inline-flex items-center px-4 py-2 bg-red-100 text-red-700 text-sm font-medium rounded-lg hover:bg-red-200 transition-all"
-                          >
-                            Retry
-                          </button>
-                        )}
-                      </div>
+                        </div>
+                      )}
                     </div>
-
-                    {/* Progress Bar for Processing Items */}
-                    {brief.status === 'processing' && (
-                      <div className="mt-4">
-                        <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
-                          <span>Generating your brand assets...</span>
-                          <span>~2 min remaining</span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                          <div className="bg-gradient-to-r from-cyan-500 to-yellow-500 h-2 rounded-full animate-pulse" 
-                               style={{ width: '60%' }}></div>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

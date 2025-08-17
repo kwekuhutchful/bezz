@@ -56,7 +56,8 @@ api.interceptors.response.use(
       // Token expired or invalid
       setAuthToken(null)
       toast.error('Session expired. Please log in again.')
-      window.location.href = '/login'
+      // Don't force redirect here - let the app handle it through routing
+      // window.location.href = '/login'
     } else if (error.response?.status >= 500) {
       toast.error('Server error. Please try again later.')
     } else if (error.response?.data?.error) {
@@ -84,6 +85,7 @@ export const endpoints = {
     create: '/api/briefs',
     list: '/api/briefs',
     get: (id: string) => `/api/briefs/${id}`,
+    retry: (id: string) => `/api/briefs/${id}/retry`,
     refreshUrls: (id: string) => `/api/briefs/${id}/refresh-urls`,
     delete: (id: string) => `/api/briefs/${id}`,
   },
@@ -125,6 +127,11 @@ export const authAPI = {
 
 // Brief API functions
 export const briefAPI = {
+  retry: async (briefId: string) => {
+    const response = await api.post(endpoints.briefs.retry(briefId))
+    return response.data
+  },
+  
   refreshImageURLs: async (briefId: string) => {
     const response = await api.post(endpoints.briefs.refreshUrls(briefId))
     return response.data

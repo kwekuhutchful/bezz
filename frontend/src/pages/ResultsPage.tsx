@@ -34,7 +34,10 @@ import {
   TagIcon,
   ChevronRightIcon,
   FolderIcon,
-  PaperClipIcon
+  PaperClipIcon,
+  DocumentTextIcon,
+  ArchiveBoxIcon,
+  SwatchIcon
 } from '@heroicons/react/24/outline';
 import { CheckCircleIcon as CheckCircleIconSolid } from '@heroicons/react/24/solid';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
@@ -155,6 +158,9 @@ ${brief.results.strategy.positioning || 'Not available'}
 VALUE PROPOSITION
 ${brief.results.strategy.valueProposition || 'Not available'}
 
+BRAND TAGLINE
+${brief.results.strategy.tagline ? `"${brief.results.strategy.tagline}"` : 'Not available'}
+
 BRAND PILLARS
 ${brief.results.strategy.brandPillars?.join('\n• ') || 'Not available'}
 
@@ -186,6 +192,37 @@ ${brief.results.strategy.targetSegments?.map((segment, i) =>
     URL.revokeObjectURL(url);
     
     toast.success('Brand strategy downloaded!');
+  };
+
+  const handleBatchDownload = async () => {
+    if (!brief?.id) {
+      toast.error('Brief not available for download');
+      return;
+    }
+
+    try {
+      toast.loading('Preparing complete brand kit...', { id: 'batch-download' });
+      
+      const response = await api.get(`/api/exports/batch/${brief.id}?format=zip`, {
+        responseType: 'blob'
+      });
+      
+      // Create download link
+      const blob = new Blob([response.data], { type: 'application/zip' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${brief.companyName}-complete-brand-kit.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      
+      toast.success('Complete brand kit downloaded!', { id: 'batch-download' });
+    } catch (error) {
+      console.error('Batch download failed:', error);
+      toast.error('Failed to download brand kit', { id: 'batch-download' });
+    }
   };
 
   const handlePreviewCampaign = (campaign: any) => {
@@ -301,11 +338,16 @@ ${brief.results.strategy.targetSegments?.map((segment, i) =>
   const statusConfig = getStatusConfig();
   const StatusIcon = statusConfig?.icon;
 
+  // Debug: Log the full brief results
+  console.log('🔍 DEBUG: Full Brief Results:', brief.results);
+  console.log('🔍 DEBUG: Brief Status:', brief.status);
+
   // Create safe data structure with fallbacks
   const safeResults = {
     strategy: brief.results?.strategy || {
       positioning: "Strategy being generated...",
       valueProposition: "Value proposition being developed...",
+      tagline: "",
       brandPillars: [],
       messagingFramework: {
         primaryMessage: "Primary message being crafted...",
@@ -313,6 +355,8 @@ ${brief.results.strategy.targetSegments?.map((segment, i) =>
       },
       targetSegments: []
     },
+    brandNames: brief.results?.brandNames || [],
+    brandIdentity: brief.results?.brandIdentity || null,
     ads: brief.results?.ads || [],
     brief: brief.results?.brief || {}
   };
@@ -419,13 +463,22 @@ ${brief.results.strategy.targetSegments?.map((segment, i) =>
               Share
             </button>
             {brief.status === 'completed' && (
-              <button
-                onClick={handleDownloadStrategy}
-                className="inline-flex items-center px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-all"
-              >
-                <ArrowDownTrayIcon className="h-4 w-4 mr-2" />
-                Download All
-              </button>
+              <div className="flex space-x-2">
+                <button
+                  onClick={handleBatchDownload}
+                  className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all"
+                >
+                  <ArrowDownTrayIcon className="h-4 w-4 mr-2" />
+                  Download Brand Kit
+                </button>
+                <button
+                  onClick={handleDownloadStrategy}
+                  className="inline-flex items-center px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-all"
+                >
+                  <DocumentTextIcon className="h-4 w-4 mr-2" />
+                  Strategy Only
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -548,6 +601,127 @@ ${brief.results.strategy.targetSegments?.map((segment, i) =>
                     </p>
                   </div>
                 </div>
+
+                {/* Brand Tagline */}
+                {safeResults.strategy.tagline && (
+                  <div className="bg-gradient-to-r from-yellow-50 to-orange-50 rounded-lg border border-yellow-200 overflow-hidden">
+                    <div className="border-l-4 border-yellow-500 pl-6 pr-8 py-6">
+                      <div className="flex items-center mb-3">
+                        <div className="p-1.5 bg-yellow-100 rounded-lg mr-3">
+                          <TagIcon className="h-4 w-4 text-yellow-600" />
+                        </div>
+                        <h2 className="text-lg font-semibold text-gray-900">Brand Tagline</h2>
+                      </div>
+                      <p className="text-2xl font-medium text-gray-900 italic text-center py-4">
+                        "{safeResults.strategy.tagline}"
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Brand Name Suggestions */}
+                {safeResults.brandNames && safeResults.brandNames.length > 0 && (
+                  <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                    <div className="border-l-4 border-purple-500 pl-6 pr-8 py-6">
+                      <div className="flex items-center mb-4">
+                        <div className="p-1.5 bg-purple-100 rounded-lg mr-3">
+                          <SparklesIcon className="h-4 w-4 text-purple-600" />
+                        </div>
+                        <h2 className="text-lg font-semibold text-gray-900">Alternative Brand Names</h2>
+                      </div>
+                      <div className="space-y-3">
+                        {safeResults.brandNames.map((suggestion, index) => (
+                          <div key={index} className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
+                            <div className="flex-shrink-0 w-6 h-6 bg-purple-100 rounded-full flex items-center justify-center">
+                              <span className="text-xs font-medium text-purple-600">{index + 1}</span>
+                            </div>
+                            <div className="flex-1">
+                              <h3 className="font-semibold text-gray-900">{suggestion.name}</h3>
+                              <p className="text-sm text-gray-600 mt-1">{suggestion.rationale}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Brand Identity (Logo & Colors) */}
+                {console.log('🔍 DEBUG: Brand Identity Data:', safeResults.brandIdentity)}
+                {safeResults.brandIdentity ? (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Logo Concept */}
+                    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                      <div className="border-l-4 border-green-500 pl-6 pr-8 py-6">
+                        <div className="flex items-center mb-4">
+                          <div className="p-1.5 bg-green-100 rounded-lg mr-3">
+                            <PhotoIcon className="h-4 w-4 text-green-600" />
+                          </div>
+                          <h2 className="text-lg font-semibold text-gray-900">Logo Concept</h2>
+                        </div>
+                        <p className="text-gray-700 leading-relaxed mb-4">
+                          {safeResults.brandIdentity.logoConcept}
+                        </p>
+                        {safeResults.brandIdentity.logoImageUrl && (
+                          <div className="bg-gray-50 rounded-lg p-4 flex justify-center">
+                            <img 
+                              src={safeResults.brandIdentity.logoImageUrl} 
+                              alt="Generated logo concept" 
+                              className="max-w-full max-h-32 object-contain"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Color Palette */}
+                    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                      <div className="border-l-4 border-pink-500 pl-6 pr-8 py-6">
+                        <div className="flex items-center mb-4">
+                          <div className="p-1.5 bg-pink-100 rounded-lg mr-3">
+                            <SwatchIcon className="h-4 w-4 text-pink-600" />
+                          </div>
+                          <h2 className="text-lg font-semibold text-gray-900">Brand Colors</h2>
+                        </div>
+                        <div className="space-y-4">
+                          {safeResults.brandIdentity.colorPalette.map((color, index) => (
+                            <div key={index} className="flex items-center space-x-4">
+                              <div 
+                                className="w-12 h-12 rounded-lg border-2 border-gray-200 flex-shrink-0"
+                                style={{ backgroundColor: color.hex }}
+                              />
+                              <div className="flex-1">
+                                <div className="flex items-center space-x-2 mb-1">
+                                  <h3 className="font-semibold text-gray-900">{color.name}</h3>
+                                  <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
+                                    {color.usage}
+                                  </span>
+                                </div>
+                                <p className="text-sm text-gray-600 mb-1">{color.hex.toUpperCase()}</p>
+                                <p className="text-xs text-gray-500">{color.psychology}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  /* Debug: Show when brand identity is missing */
+                  <div className="bg-yellow-50 rounded-lg border border-yellow-200 p-6">
+                    <div className="flex items-center mb-2">
+                      <ExclamationCircleIcon className="h-5 w-5 text-yellow-600 mr-2" />
+                      <h3 className="font-medium text-yellow-800">Brand Identity Not Available</h3>
+                    </div>
+                    <p className="text-yellow-700 text-sm">
+                      Logo and color palette generation is only available for newly created brand briefs. 
+                      This brief was created before the feature was implemented.
+                    </p>
+                    <p className="text-yellow-600 text-xs mt-2">
+                      Create a new brand brief to see logo concepts and color palettes.
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Key Metrics - Clean cards with color accents */}
@@ -684,6 +858,23 @@ ${brief.results.strategy.targetSegments?.map((segment, i) =>
                   </p>
                 </div>
               </div>
+
+              {/* Brand Tagline - Prominent with yellow accent */}
+              {safeResults.strategy.tagline && (
+                <div className="bg-gradient-to-r from-yellow-50 to-orange-50 rounded-lg border border-yellow-200 overflow-hidden">
+                  <div className="border-l-4 border-yellow-500 pl-6 pr-8 py-6">
+                    <div className="flex items-center mb-3">
+                      <div className="p-1.5 bg-yellow-100 rounded-lg mr-3">
+                        <TagIcon className="h-4 w-4 text-yellow-600" />
+                      </div>
+                      <h2 className="text-lg font-semibold text-gray-900">Brand Tagline</h2>
+                    </div>
+                    <p className="text-2xl font-medium text-gray-900 italic text-center py-4">
+                      "{safeResults.strategy.tagline}"
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* Brand Pillars - Grid with emerald accents */}
               <div className="bg-white rounded-lg border border-gray-200 p-8">
@@ -983,7 +1174,22 @@ ${brief.results.strategy.targetSegments?.map((segment, i) =>
                   </div>
                   <h2 className="text-lg font-semibold text-gray-900">Export Options</h2>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <button
+                    onClick={handleBatchDownload}
+                    className="group p-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg hover:from-blue-100 hover:to-indigo-100 transition-all text-left border-2 border-blue-200"
+                  >
+                    <div className="flex items-start">
+                      <div className="p-2 bg-white rounded-lg mr-4 border border-blue-200 group-hover:border-blue-300">
+                        <ArchiveBoxIcon className="h-5 w-5 text-blue-600" />
+                      </div>
+                      <div>
+                        <h3 className="font-medium text-gray-900 mb-1">Complete Brand Kit</h3>
+                        <p className="text-xs text-gray-600">ZIP with all assets, strategy, logos & ads</p>
+                      </div>
+                    </div>
+                  </button>
+
                   <button
                     onClick={handleDownloadStrategy}
                     className="group p-6 bg-gray-50 rounded-lg hover:bg-green-50 transition-all text-left"
@@ -993,8 +1199,8 @@ ${brief.results.strategy.targetSegments?.map((segment, i) =>
                         <DocumentDuplicateIcon className="h-5 w-5 text-green-600" />
                       </div>
                       <div>
-                        <h3 className="font-medium text-gray-900 mb-1">Brand Strategy PDF</h3>
-                        <p className="text-xs text-gray-600">Complete positioning & messaging guide</p>
+                        <h3 className="font-medium text-gray-900 mb-1">Brand Strategy</h3>
+                        <p className="text-xs text-gray-600">Text file with positioning & messaging</p>
                       </div>
                     </div>
                   </button>

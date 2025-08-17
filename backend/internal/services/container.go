@@ -7,7 +7,8 @@ import (
 	"cloud.google.com/go/firestore"
 	"cloud.google.com/go/storage"
 	firebase "firebase.google.com/go/v4"
-	"github.com/sashabaranov/go-openai"
+	"github.com/openai/openai-go/v2"
+	"github.com/openai/openai-go/v2/option"
 	"github.com/stripe/stripe-go/v76"
 
 	"bezz-backend/internal/config"
@@ -25,6 +26,7 @@ type Container struct {
 	UserService       *UserService
 	BrandBriefService *BrandBriefService
 	PaymentService    *PaymentService
+	ExportService     *ExportService
 }
 
 // NewContainer creates a new service container
@@ -51,8 +53,10 @@ func NewContainer(cfg *config.Config) (*Container, error) {
 		return nil, err
 	}
 
-	// Initialize OpenAI client
-	openaiClient := openai.NewClient(cfg.OpenAIAPIKey)
+	// Initialize OpenAI client with official SDK
+	openaiClient := openai.NewClient(
+		option.WithAPIKey(cfg.OpenAIAPIKey),
+	)
 
 	// Initialize Stripe
 	stripe.Key = cfg.StripeSecretKey
@@ -66,22 +70,24 @@ func NewContainer(cfg *config.Config) (*Container, error) {
 	// Create service instances
 	authService := NewAuthService(authClient, cfg.FirebaseAPIKey)
 	// Initialize AI Service
-	aiService := NewAIService(openaiClient, storageClient, cfg.GCSBucketName)
+	aiService := NewAIService(&openaiClient, storageClient, cfg.GCSBucketName)
 	userService := NewUserService(firestoreClient)
 	brandBriefService := NewBrandBriefService(firestoreClient, aiService, storageClient, cfg.GCSBucketName)
 	paymentService := NewPaymentService(cfg.StripeSecretKey, cfg.StripeWebhookSecret)
+	exportService := NewExportService(brandBriefService, firestoreClient)
 
 	container := &Container{
 		Config:            cfg,
 		Firebase:          firebaseApp,
 		Firestore:         firestoreClient,
 		Storage:           storageClient,
-		OpenAI:            openaiClient,
+		OpenAI:            &openaiClient,
 		AuthService:       authService,
 		AIService:         aiService,
 		UserService:       userService,
 		BrandBriefService: brandBriefService,
 		PaymentService:    paymentService,
+		ExportService:     exportService,
 	}
 
 	return container, nil

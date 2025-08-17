@@ -249,6 +249,85 @@ func (h *BrandBriefHandler) Delete(c *gin.Context) {
 	})
 }
 
+// Retry retries processing for a failed brief
+func (h *BrandBriefHandler) Retry(c *gin.Context) {
+	briefID := c.Param("id")
+	userID := middleware.GetUserID(c)
+
+	log.Printf("🔄 RETRY BRIEF: Starting retry for brief %s by user %s", briefID, userID)
+
+	if briefID == "" {
+		log.Printf("❌ RETRY BRIEF: Brief ID is required")
+		c.JSON(http.StatusBadRequest, models.APIResponse{
+			Success: false,
+			Error:   "Brief ID is required",
+		})
+		return
+	}
+
+	if userID == "" {
+		log.Printf("❌ RETRY BRIEF: User not authenticated")
+		c.JSON(http.StatusUnauthorized, models.APIResponse{
+			Success: false,
+			Error:   "User not authenticated",
+		})
+		return
+	}
+
+	// Get the brief to verify ownership and status
+	brief, err := h.briefService.GetBrief(c.Request.Context(), briefID)
+	if err != nil {
+		log.Printf("❌ RETRY BRIEF: Failed to get brief %s: %v", briefID, err)
+		c.JSON(http.StatusNotFound, models.APIResponse{
+			Success: false,
+			Error:   "Brief not found",
+		})
+		return
+	}
+
+	// Verify ownership
+	if brief.UserID != userID {
+		log.Printf("❌ RETRY BRIEF: Access denied for brief %s by user %s", briefID, userID)
+		c.JSON(http.StatusForbidden, models.APIResponse{
+			Success: false,
+			Error:   "Access denied",
+		})
+		return
+	}
+
+	// Check if brief is in a retryable state
+	if brief.Status != "failed" && brief.Status != "ads_failed" && brief.Status != "images_failed" {
+		log.Printf("❌ RETRY BRIEF: Brief %s is not in a retryable state (current status: %s)", briefID, brief.Status)
+		c.JSON(http.StatusBadRequest, models.APIResponse{
+			Success: false,
+			Error:   "Brief is not in a retryable state",
+		})
+		return
+	}
+
+	// Retry the brief processing
+	err = h.briefService.RetryProcessing(c.Request.Context(), briefID)
+	if err != nil {
+		log.Printf("❌ RETRY BRIEF: Failed to retry processing for brief %s: %v", briefID, err)
+		c.JSON(http.StatusInternalServerError, models.APIResponse{
+			Success: false,
+			Error:   "Failed to retry processing",
+		})
+		return
+	}
+
+	log.Printf("✅ RETRY BRIEF: Successfully started retry for brief %s", briefID)
+
+	c.JSON(http.StatusOK, models.APIResponse{
+		Success: true,
+		Message: "Brief retry started successfully",
+		Data: gin.H{
+			"briefId": briefID,
+			"status":  "processing",
+		},
+	})
+}
+
 // RefreshImageURLs refreshes expired signed URLs for brief images
 func (h *BrandBriefHandler) RefreshImageURLs(c *gin.Context) {
 	userID := middleware.GetUserID(c)

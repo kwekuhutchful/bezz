@@ -184,7 +184,7 @@ const BrandBriefPage: React.FC = () => {
   const getFieldsForStep = (step: number): (keyof BrandBriefForm)[] => {
     switch (step) {
       case 1:
-        return ['companyName', 'sector'];
+        return ['companyName', 'businessDescription', 'sector'];
       case 2:
         return ['tone', 'language'];
       case 3:
@@ -365,6 +365,51 @@ const BrandBriefPage: React.FC = () => {
                     {errors.companyName.message}
                   </p>
                 )}
+              </div>
+
+              <div>
+                <label htmlFor="businessDescription" className="block text-sm font-medium text-gray-700 mb-2">
+                  What does your business do? *
+                </label>
+                <p className="text-sm text-gray-600 mb-3">
+                  Describe your main products/services and what makes your business unique
+                </p>
+                <textarea
+                  {...register('businessDescription', {
+                    required: 'Business description is required',
+                    minLength: {
+                      value: 20,
+                      message: 'Please provide a more detailed description (at least 20 characters)',
+                    },
+                  })}
+                  rows={4}
+                  className={`
+                    w-full px-4 py-3 border rounded-xl transition-all resize-none
+                    ${errors.businessDescription 
+                      ? 'border-red-300 focus:ring-red-500' 
+                      : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+                    }
+                  `}
+                  placeholder="e.g., We provide affordable co-working spaces for tech startups in Lagos, offering high-speed internet, meeting rooms, and networking events to help entrepreneurs grow their businesses."
+                  onKeyDown={(e) => {
+                    // Prevent Enter from submitting the form, but allow new lines in textarea
+                    if (e.key === 'Enter') {
+                      e.stopPropagation(); // Prevent event from bubbling up to form
+                    }
+                  }}
+                />
+                {errors.businessDescription && (
+                  <p className="mt-2 text-sm text-red-600 flex items-center">
+                    <InformationCircleIcon className="h-4 w-4 mr-1" />
+                    {errors.businessDescription.message}
+                  </p>
+                )}
+                <div className="mt-2 flex items-start space-x-2">
+                  <LightBulbIcon className="h-4 w-4 text-gray-400 mt-0.5" />
+                  <p className="text-xs text-gray-600">
+                    <strong>Tip:</strong> Include what you sell/offer, who you serve, and what makes you different from competitors
+                  </p>
+                </div>
               </div>
 
               <div>
@@ -681,6 +726,9 @@ const BrandBriefPage: React.FC = () => {
                     <div>
                       <p className="text-sm font-medium text-gray-700">Company</p>
                       <p className="text-sm text-gray-900">{watchedValues.companyName || 'Not specified'} • {watchedValues.sector || 'Not specified'}</p>
+                      {watchedValues.businessDescription && (
+                        <p className="text-xs text-gray-600 mt-1 line-clamp-2">{watchedValues.businessDescription}</p>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-start">

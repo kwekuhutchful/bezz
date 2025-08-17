@@ -11,6 +11,7 @@ type Container struct {
 	User       *UserHandler
 	Payment    *PaymentHandler
 	Admin      *AdminHandler
+	Export     *ExportHandler
 }
 
 // NewContainer creates a new handler container
@@ -21,5 +22,6 @@ func NewContainer(services *services.Container) *Container {
 		User:       NewUserHandler(services.UserService),
 		Payment:    NewPaymentHandler(services.PaymentService, services.UserService),
 		Admin:      NewAdminHandler(services.UserService, services.BrandBriefService),
+		Export:     NewExportHandler(services.ExportService),
 	}
 }

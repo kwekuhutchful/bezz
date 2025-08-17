@@ -27,26 +27,29 @@ type Subscription struct {
 
 // BrandBrief represents a brand brief submission
 type BrandBrief struct {
-	ID             string        `json:"id" firestore:"id"`
-	UserID         string        `json:"userId" firestore:"userId"`
-	CompanyName    string        `json:"companyName" firestore:"companyName"`
-	Sector         string        `json:"sector" firestore:"sector"`
-	Tone           string        `json:"tone" firestore:"tone"`
-	TargetAudience string        `json:"targetAudience" firestore:"targetAudience"`
-	Language       string        `json:"language" firestore:"language"` // en, fr
-	AdditionalInfo string        `json:"additionalInfo,omitempty" firestore:"additionalInfo,omitempty"`
-	Status         string        `json:"status" firestore:"status"` // processing, completed, failed
-	CreatedAt      time.Time     `json:"createdAt" firestore:"createdAt"`
-	UpdatedAt      time.Time     `json:"updatedAt" firestore:"updatedAt"`
-	Results        *BrandResults `json:"results,omitempty" firestore:"results,omitempty"`
+	ID                  string        `json:"id" firestore:"id"`
+	UserID              string        `json:"userId" firestore:"userId"`
+	CompanyName         string        `json:"companyName" firestore:"companyName"`
+	BusinessDescription string        `json:"businessDescription" firestore:"businessDescription"`
+	Sector              string        `json:"sector" firestore:"sector"`
+	Tone                string        `json:"tone" firestore:"tone"`
+	TargetAudience      string        `json:"targetAudience" firestore:"targetAudience"`
+	Language            string        `json:"language" firestore:"language"` // en, fr
+	AdditionalInfo      string        `json:"additionalInfo,omitempty" firestore:"additionalInfo,omitempty"`
+	Status              string        `json:"status" firestore:"status"` // processing, completed, failed
+	CreatedAt           time.Time     `json:"createdAt" firestore:"createdAt"`
+	UpdatedAt           time.Time     `json:"updatedAt" firestore:"updatedAt"`
+	Results             *BrandResults `json:"results,omitempty" firestore:"results,omitempty"`
 }
 
 // BrandResults contains the AI-generated results
 type BrandResults struct {
-	Brief    ProcessedBrief `json:"brief" firestore:"brief"`
-	Strategy BrandStrategy  `json:"strategy" firestore:"strategy"`
-	Ads      []AdCampaign   `json:"ads" firestore:"ads"`
-	VideoAds []VideoAd      `json:"videoAds,omitempty" firestore:"videoAds,omitempty"`
+	Brief         ProcessedBrief        `json:"brief" firestore:"brief"`
+	Strategy      BrandStrategy         `json:"strategy" firestore:"strategy"`
+	BrandNames    []BrandNameSuggestion `json:"brandNames,omitempty" firestore:"brandNames,omitempty"`
+	BrandIdentity *BrandIdentity        `json:"brandIdentity,omitempty" firestore:"brandIdentity,omitempty"`
+	Ads           []AdCampaign          `json:"ads" firestore:"ads"`
+	VideoAds      []VideoAd             `json:"videoAds,omitempty" firestore:"videoAds,omitempty"`
 }
 
 // ProcessedBrief represents the processed brand brief
@@ -65,6 +68,7 @@ type ProcessedBrief struct {
 type BrandStrategy struct {
 	Positioning        string             `json:"positioning" firestore:"positioning"`
 	ValueProposition   string             `json:"valueProposition" firestore:"valueProposition"`
+	Tagline            string             `json:"tagline" firestore:"tagline"`
 	BrandPillars       []string           `json:"brandPillars" firestore:"brandPillars"`
 	MessagingFramework MessagingFramework `json:"messagingFramework" firestore:"messagingFramework"`
 	TonalGuidelines    TonalGuidelines    `json:"tonalGuidelines" firestore:"tonalGuidelines"`
@@ -199,6 +203,7 @@ type BriefGPTResponse struct {
 type StrategistGPTResponse struct {
 	PositioningStatement string                       `json:"positioning_statement"`
 	ValueProposition     string                       `json:"value_proposition"`
+	Tagline              string                       `json:"tagline"`
 	BrandPillars         []string                     `json:"brand_pillars"`
 	MessagingFramework   StrategistMessagingFramework `json:"messaging_framework"`
 	TargetSegments       []StrategistTargetSegment    `json:"target_segments"`
@@ -238,4 +243,38 @@ type AdSpec struct {
 	Headline    string `json:"headline"`
 	Body        string `json:"body"`
 	DallePrompt string `json:"dalle_prompt"`
+}
+
+// BrandNameSuggestion represents a suggested brand name with rationale
+type BrandNameSuggestion struct {
+	Name      string `json:"name" firestore:"name"`
+	Rationale string `json:"rationale" firestore:"rationale"`
+}
+
+// BrandNameGPTResponse represents the response from Brand-Name-GPT
+type BrandNameGPTResponse struct {
+	BrandNames []BrandNameSuggestion `json:"brand_names"`
+}
+
+// BrandIdentity represents the brand's visual identity
+type BrandIdentity struct {
+	LogoConcept    string  `json:"logoConcept" firestore:"logoConcept"`
+	ColorPalette   []Color `json:"colorPalette" firestore:"colorPalette"`
+	LogoImageURL   string  `json:"logoImageUrl,omitempty" firestore:"logoImageUrl,omitempty"`
+	LogoObjectName string  `json:"logoObjectName,omitempty" firestore:"logoObjectName,omitempty"`
+}
+
+// Color represents a brand color with psychology and usage
+type Color struct {
+	Name       string `json:"name" firestore:"name"`
+	Hex        string `json:"hex" firestore:"hex"`
+	Usage      string `json:"usage" firestore:"usage"` // "primary", "secondary", "accent"
+	Psychology string `json:"psychology" firestore:"psychology"`
+}
+
+// LogoDesignerGPTResponse represents the response from Logo-Designer-GPT
+type LogoDesignerGPTResponse struct {
+	LogoConcept  string  `json:"logo_concept"`
+	ColorPalette []Color `json:"color_palette"`
+	DallePrompt  string  `json:"dalle_prompt"`
 }

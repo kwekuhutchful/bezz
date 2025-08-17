@@ -92,6 +92,7 @@ func main() {
 			briefs.POST("", handlerContainer.BrandBrief.Create)
 			briefs.GET("", handlerContainer.BrandBrief.List)
 			briefs.GET("/:id", handlerContainer.BrandBrief.GetByID)
+			briefs.POST("/:id/retry", handlerContainer.BrandBrief.Retry)
 			briefs.POST("/:id/refresh-urls", handlerContainer.BrandBrief.RefreshImageURLs)
 			briefs.DELETE("/:id", handlerContainer.BrandBrief.Delete)
 		}
@@ -120,6 +121,13 @@ func main() {
 		{
 			admin.GET("/metrics", handlerContainer.Admin.GetMetrics)
 			admin.GET("/users", handlerContainer.Admin.GetUsers)
+		}
+
+		// Export routes
+		exports := api.Group("/exports")
+		exports.Use(middleware.AuthRequired(serviceContainer.Firebase))
+		{
+			exports.GET("/batch/:briefId", handlerContainer.Export.CreateBatchExport)
 		}
 	}
 
