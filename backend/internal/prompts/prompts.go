@@ -100,12 +100,15 @@ MANDATORY: Each dalle_prompt MUST create images that look like REAL PHOTOGRAPHS,
 - Specify image quality: "high resolution", "sharp focus", "commercial photography", "professional photography"
 - Add realism: "photojournalistic style", "candid moment", "authentic setting"
 
-Example EXCELLENT dalle_prompts:
-Technology: "Professional DSLR photo of a modern smartphone being held by professional hands in a bright modern office, shot with 85mm lens at f/1.8 aperture, soft natural lighting from large windows, shallow depth of field with blurred contemporary workspace background, high resolution commercial photography, sharp focus on device screen and metallic edges, photojournalistic style"
+BRAND CONSISTENCY REQUIREMENTS:
+- Use the brand color palette in visual elements (accents, backgrounds, props). Prefer the "primary" color for key accents.
+- Optionally include a subtle brand mark inspired by the logo concept (no generic clipart).
+- Ensure overall look feels part of one brand system across variations.
 
-Food & Beverage: "Professional DSLR photo of an artisanal coffee cup with latte art on rustic wooden table with scattered coffee beans, shot with 100mm macro lens at f/2.8 aperture, warm golden hour lighting through café window, shallow depth of field with blurred café interior background, high resolution food photography, sharp focus on foam texture and steam rising"
+Context — Brand Strategy:
+%s
 
-Based on this brand strategy:
+Context — Brand Identity (logo concept and colors):
 %s
 
 Generate 3 diverse ad variations with this exact JSON structure:
@@ -132,7 +135,7 @@ Generate 3 diverse ad variations with this exact JSON structure:
   ]
 }
 
-Each ad should target different aspects of the brand strategy. Ensure headlines are punchy, body copy is persuasive, and DALL-E prompts follow the photorealistic guidelines above.
+Each ad should target different aspects of the brand strategy. Ensure headlines are punchy, body copy is persuasive, and DALL-E prompts follow the photorealistic guidelines above. Incorporate the brand colors (by hex) explicitly in each dalle_prompt.
 
 CRITICAL: Your dalle_prompt fields MUST produce images that look like the examples shown (professional food photography and chef photography). NO cartoon, illustration, or artistic styles. Only REAL PHOTOGRAPHY with specific camera settings, lighting, and environmental details.
 
@@ -194,6 +197,7 @@ Brand Strategy Context:
 - Value Proposition: %s
 - Brand Pillars: %s
 - Target Audience: %s
+- Tagline: %s
 
 Create a logo concept and color palette that:
 - Reflects the brand positioning and values
@@ -201,6 +205,11 @@ Create a logo concept and color palette that:
 - Works across digital and print media
 - Is appropriate for the sector
 - Considers African market aesthetics and global appeal
+
+Design considerations:
+- Prefer a wordmark + symbol approach where appropriate.
+- Use ONLY the colors from the generated color_palette (with clear primary/secondary/accent roles).
+- Provide guidance on how the company name and optional tagline can be arranged in lockups.
 
 Return JSON with this exact structure:
 {
@@ -225,7 +234,7 @@ Return JSON with this exact structure:
       "psychology": "Brief explanation of color psychology and why it fits the brand"
     }
   ],
-  "dalle_prompt": "Professional logo design on white background, clean vector style, modern typography, minimalist approach, corporate branding, high resolution, sharp edges, suitable for business applications"
+  "dalle_prompt": "Professional logo design on white background, clean vector style, modern typography, minimalist approach, corporate branding, high resolution, sharp edges, suitable for business applications. Use the brand color palette explicitly by hex values and ensure the design reflects the described logo concept."
 }
 
 Respond only with valid JSON, no additional text or formatting.`

@@ -634,7 +634,7 @@ func (s *AIService) ModerateContent(ctx context.Context, content string) (bool, 
 }
 
 // GenerateAds calls Creative-Director-GPT to generate ad specifications
-func (s *AIService) GenerateAds(ctx context.Context, strategy *bezzmodels.BrandStrategy) (*bezzmodels.CreativeDirectorGPTResponse, error) {
+func (s *AIService) GenerateAds(ctx context.Context, strategy *bezzmodels.BrandStrategy, identity *bezzmodels.BrandIdentity) (*bezzmodels.CreativeDirectorGPTResponse, error) {
 	log.Printf("🎨 AI PIPELINE: Starting Creative-Director-GPT for ad generation")
 
 	// Convert strategy to JSON string for the prompt
@@ -643,7 +643,15 @@ func (s *AIService) GenerateAds(ctx context.Context, strategy *bezzmodels.BrandS
 		return nil, fmt.Errorf("failed to marshal strategy: %w", err)
 	}
 
-	prompt := fmt.Sprintf(prompts.CreativeDirectorGPTPrompt, string(strategyJSON))
+	// Include brand identity (logo concept and color palette) to drive visual consistency in ads
+	identityJSON := "{}"
+	if identity != nil {
+		if b, err := json.Marshal(identity); err == nil {
+			identityJSON = string(b)
+		}
+	}
+
+	prompt := fmt.Sprintf(prompts.CreativeDirectorGPTPrompt, string(strategyJSON), identityJSON)
 
 	// Create parameters with desired settings (used via unified helper)
 	temperature := float64(0.7)
@@ -703,7 +711,7 @@ func (s *AIService) RenderImages(ctx context.Context, adSpecs []bezzmodels.AdSpe
 
 	wg.Wait()
 
-	// Check for critical errors (if all failed)
+	// Check for critical errors - require ALL images to succeed for completion
 	successCount := 0
 	for _, err := range errors {
 		if err == nil {
@@ -713,8 +721,9 @@ func (s *AIService) RenderImages(ctx context.Context, adSpecs []bezzmodels.AdSpe
 
 	log.Printf("🖼️ AI PIPELINE: Generated %d/%d images successfully", successCount, len(adSpecs))
 
-	if successCount == 0 {
-		return nil, fmt.Errorf("all image generation attempts failed")
+	// Require ALL images to succeed for the pipeline to be considered complete
+	if successCount < len(adSpecs) {
+		return nil, fmt.Errorf("image generation incomplete: only %d/%d images generated successfully", successCount, len(adSpecs))
 	}
 
 	return results, nil
@@ -1094,6 +1103,7 @@ func (s *AIService) GenerateBrandIdentity(ctx context.Context, strategy *bezzmod
 		strategy.ValueProposition,
 		brandPillars,
 		targetAudience,
+		strategy.Tagline,
 	)
 
 	// Create parameters with desired settings (used via unified helper)
@@ -1112,12 +1122,12 @@ func (s *AIService) GenerateBrandIdentity(ctx context.Context, strategy *bezzmod
 	log.Printf("🎨 AI PIPELINE: Logo-Designer-GPT raw response: %s", content)
 	log.Printf("✅ AI PIPELINE: Logo-Designer-GPT succeeded using %s", modelUsed)
 
-	// Generate logo image using gpt-image-1 (with DALL-E 3 fallback)
+	// Generate logo image using gpt-image-1 (with DALL-E 3 fallback) - REQUIRED
 	log.Printf("🖼️ AI PIPELINE: Generating logo image with gpt-image-1")
 	logoImageURL, err := s.generateImage(ctx, response.DallePrompt)
 	if err != nil {
-		log.Printf("⚠️ AI PIPELINE: Logo image generation failed, continuing without image: %v", err)
-		logoImageURL = "" // Graceful degradation
+		log.Printf("❌ AI PIPELINE: Logo image generation failed: %v", err)
+		return nil, fmt.Errorf("logo image generation failed: %w", err)
 	}
 
 	// Upload logo to GCS if generated successfully

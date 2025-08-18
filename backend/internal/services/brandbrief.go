@@ -212,17 +212,16 @@ func (s *BrandBriefService) processBrief(ctx context.Context, brief *models.Bran
 
 	log.Printf("✅ AI PIPELINE: Generated %d brand name suggestions", len(brandNames))
 
-	// Generate brand identity (logo + colors)
+	// Generate brand identity (logo + colors) - REQUIRED for completion
 	log.Printf("🎨 AI PIPELINE: Starting brand identity generation...")
 	brandIdentity, err := s.aiService.GenerateBrandIdentity(ctx, strategy, brief.CompanyName, brief.Sector, brief.TargetAudience)
 	if err != nil {
-		log.Printf("⚠️ AI PIPELINE: Brand identity generation failed, continuing without identity: %v", err)
-		brandIdentity = nil // Graceful degradation
+		log.Printf("❌ AI PIPELINE: Brand identity generation failed for brief %s: %v", brief.ID, err)
+		s.updateBriefStatus(ctx, brief.ID, "failed")
+		return
 	}
 
-	if brandIdentity != nil {
-		log.Printf("✅ AI PIPELINE: Generated brand identity with %d colors", len(brandIdentity.ColorPalette))
-	}
+	log.Printf("✅ AI PIPELINE: Generated brand identity with %d colors", len(brandIdentity.ColorPalette))
 
 	// Update status to strategy completed
 	log.Printf("💾 AI PIPELINE: Saving strategy, brand names, and identity to Firestore...")
@@ -230,7 +229,7 @@ func (s *BrandBriefService) processBrief(ctx context.Context, brief *models.Bran
 
 	// Generate ad campaigns
 	log.Printf("🎨 AI PIPELINE: Starting ad campaign generation...")
-	adSpecs, err := s.aiService.GenerateAds(ctx, strategy)
+	adSpecs, err := s.aiService.GenerateAds(ctx, strategy, brandIdentity)
 	if err != nil {
 		log.Printf("❌ AI PIPELINE: Ad generation failed for brief %s: %v", brief.ID, err)
 		s.updateBriefStatus(ctx, brief.ID, "ads_failed")

@@ -174,42 +174,32 @@ const DashboardPage: React.FC = () => {
 
   return (
     <div className="w-full">
-      {/* Welcome Section with Gradient Background */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-cyan-500 via-yellow-500 to-yellow-600 p-8 mb-8">
-        <div className="absolute inset-0 bg-black/10"></div>
-        <div className="relative z-10">
-          <h1 className="text-3xl font-bold text-white mb-2">
-            Welcome back, {user?.displayName || user?.email?.split('@')[0]}! 👋
-          </h1>
-          <p className="text-blue-100 text-lg mb-6">
-            {briefs.length === 0 
-              ? "Ready to create your first AI-powered brand?"
-              : `You have ${briefs.filter(b => b.status === 'completed').length} completed brands ready to launch`
-            }
-          </p>
-          <div className="flex flex-wrap gap-4">
-            <Link
-              to="/brief"
-              className="inline-flex items-center px-6 py-3 bg-white text-blue-600 font-medium rounded-xl hover:shadow-lg transform hover:scale-105 transition-all"
-            >
-              <RocketLaunchIcon className="h-5 w-5 mr-2" />
-              Create New Brand
-            </Link>
-            {briefs.length > 0 && (
+      {/* Welcome Section with Gradient Background - Only for new users */}
+      {briefs.length === 0 && (
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-cyan-500 via-yellow-500 to-yellow-600 p-8 mb-8">
+          <div className="absolute inset-0 bg-black/10"></div>
+          <div className="relative z-10">
+            <h1 className="text-3xl font-bold text-white mb-2">
+              Welcome back, {user?.displayName || user?.email?.split('@')[0]}! 👋
+            </h1>
+            <p className="text-blue-100 text-lg mb-6">
+              Ready to create your first AI-powered brand?
+            </p>
+            <div className="flex flex-wrap gap-4">
               <Link
-                to="/results"
-                className="inline-flex items-center px-6 py-3 bg-white/20 backdrop-blur-sm text-white font-medium rounded-xl hover:bg-white/30 transition-all"
+                to="/brief"
+                className="inline-flex items-center px-6 py-3 bg-white text-blue-600 font-medium rounded-xl hover:shadow-lg transform hover:scale-105 transition-all"
               >
-                View All Results
-                <ArrowRightIcon className="h-4 w-4 ml-2" />
+                <RocketLaunchIcon className="h-5 w-5 mr-2" />
+                Create New Brand
               </Link>
-            )}
+            </div>
           </div>
+          {/* Decorative Elements */}
+          <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-3xl"></div>
+          <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-white/10 rounded-full blur-3xl"></div>
         </div>
-        {/* Decorative Elements */}
-        <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-3xl"></div>
-        <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-white/10 rounded-full blur-3xl"></div>
-      </div>
+      )}
 
       {/* Stats Cards with Modern Design */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -464,7 +454,7 @@ const DashboardPage: React.FC = () => {
                         
                         {/* Actions */}
                         <div className="flex-shrink-0 self-center">
-                          {brief.status === 'completed' || brief.status === 'strategy_completed' ? (
+                          {brief.status === 'completed' ? (
                             <Link
                               to={`/results/${brief.id}`}
                               className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-cyan-500 to-yellow-500 text-white text-sm font-medium rounded-lg hover:shadow-md transform hover:scale-105 transition-all"
@@ -472,7 +462,7 @@ const DashboardPage: React.FC = () => {
                               View Brand
                               <ArrowRightIcon className="ml-2 h-4 w-4" />
                             </Link>
-                          ) : brief.status === 'processing' ? (
+                          ) : brief.status === 'processing' || brief.status === 'strategy_completed' || brief.status === 'ads_completed' ? (
                             <div className="inline-flex items-center px-4 py-2 bg-yellow-100 text-yellow-700 text-sm font-medium rounded-lg">
                               <LoadingSpinner size="sm" className="mr-2" />
                               Processing

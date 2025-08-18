@@ -239,6 +239,20 @@ ${brief.results.strategy.targetSegments?.map((segment, i) =>
     // TODO: Implement bulk export
   };
 
+  const handleDownloadLogo = () => {
+    const url = safeResults.brandIdentity?.logoImageUrl;
+    if (!url) {
+      toast.error('Logo not available for download');
+      return;
+    }
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${brief?.companyName?.replace(/[^a-z0-9]/gi, '_')}_logo.png`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
   const platformIcons: Record<string, any> = {
     facebook: DevicePhoneMobileIcon,
     instagram: PhotoIcon,
@@ -360,6 +374,10 @@ ${brief.results.strategy.targetSegments?.map((segment, i) =>
     ads: brief.results?.ads || [],
     brief: brief.results?.brief || {}
   };
+
+  const primaryColorHex = safeResults.brandIdentity?.colorPalette?.find(c => c.usage?.toLowerCase() === 'primary')?.hex
+    || safeResults.brandIdentity?.colorPalette?.[0]?.hex
+    || '#111827';
 
   const tabs = [
     { id: 'overview' as TabType, name: 'Overview', icon: SparklesIcon, description: 'Executive summary' },
@@ -652,12 +670,27 @@ ${brief.results.strategy.targetSegments?.map((segment, i) =>
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* Logo Concept */}
                     <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                      <div className="border-l-4 border-green-500 pl-6 pr-8 py-6">
+                      <div className="pl-6 pr-8 py-6" style={{ borderLeft: `4px solid ${primaryColorHex}` }}>
                         <div className="flex items-center mb-4">
                           <div className="p-1.5 bg-green-100 rounded-lg mr-3">
                             <PhotoIcon className="h-4 w-4 text-green-600" />
                           </div>
                           <h2 className="text-lg font-semibold text-gray-900">Logo Concept</h2>
+                        </div>
+                        {/* Company + Tagline + Download */}
+                        <div className="flex items-center justify-between mb-3">
+                          <div>
+                            <p className="text-base font-semibold text-gray-900">{brief.companyName}</p>
+                            {safeResults.strategy.tagline && (
+                              <p className="text-sm text-gray-600 italic">{safeResults.strategy.tagline}</p>
+                            )}
+                          </div>
+                          {safeResults.brandIdentity.logoImageUrl && (
+                            <button onClick={handleDownloadLogo} className="inline-flex items-center px-3 py-1.5 bg-gray-100 text-gray-800 rounded-md hover:bg-gray-200 transition text-sm">
+                              <ArrowDownTrayIcon className="h-4 w-4 mr-1" />
+                              Download
+                            </button>
+                          )}
                         </div>
                         <p className="text-gray-700 leading-relaxed mb-4">
                           {safeResults.brandIdentity.logoConcept}
@@ -676,7 +709,7 @@ ${brief.results.strategy.targetSegments?.map((segment, i) =>
 
                     {/* Color Palette */}
                     <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                      <div className="border-l-4 border-pink-500 pl-6 pr-8 py-6">
+                      <div className="pl-6 pr-8 py-6" style={{ borderLeft: `4px solid ${primaryColorHex}` }}>
                         <div className="flex items-center mb-4">
                           <div className="p-1.5 bg-pink-100 rounded-lg mr-3">
                             <SwatchIcon className="h-4 w-4 text-pink-600" />
@@ -1036,10 +1069,12 @@ ${brief.results.strategy.targetSegments?.map((segment, i) =>
                   const PlatformIcon = platformIcons[campaign.platform.toLowerCase()] || GlobeAltIcon;
                   const FormatIcon = formatIcons[campaign.format.toLowerCase()] || PhotoIcon;
 
+                  const borderStyle = safeResults.brandIdentity ? { borderTop: `3px solid ${primaryColorHex}` } : {};
                   return (
                     <div 
                       key={index} 
                       className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:border-cyan-200 hover:shadow-lg transition-all group"
+                      style={borderStyle}
                     >
                       <div className="p-4">
                         {/* Campaign Header */}
@@ -1052,6 +1087,13 @@ ${brief.results.strategy.targetSegments?.map((segment, i) =>
                               <div className="p-1.5 bg-gray-100 rounded">
                                 <FormatIcon className="h-3.5 w-3.5 text-gray-600" />
                               </div>
+                              {safeResults.brandIdentity && (
+                                <div className="flex items-center space-x-1 ml-2">
+                                  {safeResults.brandIdentity.colorPalette.slice(0,3).map((c, i) => (
+                                    <span key={i} className="inline-block w-3 h-3 rounded-full border border-gray-200" style={{ backgroundColor: c.hex }} />
+                                  ))}
+                                </div>
+                              )}
                             </div>
                             <h3 className="font-medium text-gray-900">{campaign.title}</h3>
                             <p className="text-xs text-gray-500 mt-1">{campaign.platform} • {campaign.format}</p>
