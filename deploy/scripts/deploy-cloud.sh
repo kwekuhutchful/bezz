@@ -33,9 +33,15 @@ echo "🚀 Deploying backend to Cloud Run..."
 # Deploy backend
 gcloud run services replace deploy/backend/deploy-backend.yaml --region=$REGION
 
+# Set public access permissions for backend
+gcloud run services add-iam-policy-binding bezz-backend --region=$REGION --member="allUsers" --role="roles/run.invoker"
+
 echo "🚀 Deploying frontend to Cloud Run..."
 # Deploy frontend
 gcloud run services replace deploy/frontend/deploy-frontend.yaml --region=$REGION
+
+# Set public access permissions for frontend
+gcloud run services add-iam-policy-binding bezz-frontend --region=$REGION --member="allUsers" --role="roles/run.invoker"
 
 echo "🔗 Getting service URLs..."
 BACKEND_URL=$(gcloud run services describe bezz-backend --region=$REGION --format="value(status.url)")

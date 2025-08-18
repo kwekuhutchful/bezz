@@ -21,7 +21,10 @@ if [ "$SERVICE" = "backend" ] || [ "$SERVICE" = "both" ]; then
         --project=$PROJECT_ID
     
     # Deploy to Cloud Run
-    gcloud run services replace deploy-backend.yaml --region=$REGION
+    gcloud run services replace deploy/backend/deploy-backend.yaml --region=$REGION
+    
+    # Set public access permissions
+    gcloud run services add-iam-policy-binding bezz-backend --region=$REGION --member="allUsers" --role="roles/run.invoker"
     echo "✅ Backend deployed!"
 fi
 
@@ -35,7 +38,10 @@ if [ "$SERVICE" = "frontend" ] || [ "$SERVICE" = "both" ]; then
         --project=$PROJECT_ID
     
     # Deploy to Cloud Run
-    gcloud run services replace deploy-frontend.yaml --region=$REGION
+    gcloud run services replace deploy/frontend/deploy-frontend.yaml --region=$REGION
+    
+    # Set public access permissions
+    gcloud run services add-iam-policy-binding bezz-frontend --region=$REGION --member="allUsers" --role="roles/run.invoker"
     echo "✅ Frontend deployed!"
 fi
 
